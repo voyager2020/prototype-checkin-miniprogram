@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>发起打卡</title>
+  <link rel="stylesheet" href="../assets/td.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    /* 分组标题 */
+    .group-label {
+      font-size: 11px; font-weight: 700; color: var(--td-text-3);
+      letter-spacing: 0.8px; padding: 14px 16px 6px;
+      text-transform: uppercase;
+    }
+
+    /* Cell 行 */
+    .cell {
+      background: var(--td-bg-card);
+      display: flex; align-items: center;
+      min-height: 52px; padding: 0 16px;
+      border-bottom: 1px solid var(--td-border);
+      cursor: pointer;
+    }
+    .cell:last-child { border-bottom: none; }
+    .cell:active { background: var(--td-bg-page); }
+    .cell-label {
+      font-size: 14px; color: var(--td-text-1); flex: 1;
+    }
+    .cell-label-sub {
+      font-size: 11px; color: var(--td-text-3); margin-top: 2px;
+    }
+    .cell-value {
+      font-size: 14px; color: var(--td-text-2); margin-right: 8px;
+    }
+    .cell-arrow { color: var(--td-text-4); font-size: 12px; }
+    .cell-group {
+      background: var(--td-bg-card);
+      border-radius: var(--td-radius-l);
+      overflow: hidden;
+      box-shadow: var(--td-shadow-1);
+    }
+
+    /* 模式选择 */
+    .mode-btn {
+      flex: 1; padding: 10px 8px; border: 1.5px solid var(--td-border);
+      border-radius: var(--td-radius-l); cursor: pointer; text-align: center;
+      transition: all .15s; background: var(--td-bg-page);
+    }
+    .mode-btn.active { border-color: var(--td-text-1); background: var(--td-bg-card); }
+    .mode-btn-icon { font-size: 18px; margin-bottom: 4px; }
+    .mode-btn-title { font-size: 13px; font-weight: 600; color: var(--td-text-1); }
+    .mode-btn-desc { font-size: 10px; color: var(--td-text-3); margin-top: 2px; line-height: 1.3; }
+    .mode-check { display: none; }
+    .mode-btn.active .mode-check { display: inline; color: var(--td-text-1); font-size: 10px; margin-left: 3px; }
+
+    /* Toggle */
+    .toggle-wrap {
+      width: 44px; height: 24px; border-radius: 12px;
+      background: var(--td-border); position: relative;
+      cursor: pointer; transition: background .2s; flex-shrink: 0;
+    }
+    .toggle-wrap.on { background: var(--td-text-1); }
+    .toggle-thumb {
+      width: 20px; height: 20px; border-radius: 50%; background: #fff;
+      position: absolute; top: 2px; left: 2px;
+      transition: left .2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle-wrap.on .toggle-thumb { left: 22px; }
+
+    /* 名单区域 */
+    .roster-textarea {
+      width: 100%; min-height: 120px; border: 1px solid var(--td-border);
+      border-radius: var(--td-radius-m); padding: 10px 12px;
+      font-size: 13px; color: var(--td-text-1); resize: none;
+      outline: none; background: var(--td-bg-page); line-height: 1.6;
+      font-family: inherit;
+    }
+    .roster-textarea:focus { border-color: var(--td-text-2); background: #fff; }
+
+    .cover-zone {
+      border: 1.5px dashed var(--td-border); border-radius: var(--td-radius-l);
+      height: 80px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; cursor: pointer;
+      background: var(--td-bg-page);
+    }
+    .cover-action-btn {
+      flex: 1; height: 34px; display: flex; align-items: center; justify-content: center;
+      gap: 5px; border: 1px solid var(--td-border); border-radius: var(--td-radius-m);
+      background: var(--td-bg-page); font-size: 12px; color: var(--td-text-2); cursor: pointer;
+    }
+    .cover-action-btn:active { background: var(--td-bg-hover); }
+
+    /* 时间范围 */
+    .time-range {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .time-range input {
+      flex: 1; border: 1px solid var(--td-border); border-radius: var(--td-radius-m);
+      padding: 7px 10px; font-size: 13px; outline: none;
+      background: var(--td-bg-page); text-align: center;
+    }
+    .time-range input:focus { border-color: var(--td-text-2); }
+  </style>
+</head>
+<body style="display:flex;flex-direction:column;height:100vh;overflow:hidden;background:var(--td-bg-page);">
+<div id="app" v-cloak style="display:flex;flex-direction:column;height:100%;">
+
+  <!-- NavBar -->
+  <div class="td-navbar">
+    <div class="td-statusbar"></div>
+    <div class="td-navbar-content">
+      <div class="td-navbar-back" @click="_nav('checkin-list')">
+        <i class="fas fa-chevron-left"></i>
+      </div>
+      <span class="td-navbar-title">{{ editMode ? '编辑打卡' : '发起打卡' }}</span>
+    </div>
+  </div>
+
+  <!-- 表单 -->
+  <div style="flex:1;overflow-y:auto;" class="no-sb">
+    <div style="padding-bottom:16px;">
+
+      <!-- ① 参与模式 -->
+      <div class="group-label">参与模式</div>
+      <div style="padding:0 16px 4px;display:flex;gap:10px;">
+        <div class="mode-btn" :class="f.mode==='open'?'active':''" @click="f.mode='open'">
+          <div class="mode-btn-icon">🌍</div>
+          <div class="mode-btn-title">开放模式<span class="mode-check">✓</span></div>
+          <div class="mode-btn-desc">任何人均可扫码加入</div>
+        </div>
+        <div class="mode-btn" :class="f.mode==='invite'?'active':''" @click="f.mode='invite'">
+          <div class="mode-btn-icon">🔒</div>
+          <div class="mode-btn-title">封闭模式<span class="mode-check">✓</span></div>
+          <div class="mode-btn-desc">限名单成员，限期加入</div>
+        </div>
+      </div>
+
+      <!-- 封闭模式附加字段 -->
+      <template v-if="f.mode==='invite'">
+        <div class="group-label">名单设置</div>
+        <div class="cell-group" style="margin:0 16px;">
+
+          <!-- 加入截止日期 -->
+          <div class="cell" style="cursor:default;">
+            <div class="cell-label">加入截止日期 <span style="color:var(--td-error);font-size:12px;">*</span></div>
+            <input type="date" v-model="f.deadline"
+              style="border:1px solid var(--td-border);border-radius:var(--td-radius-m);padding:5px 8px;font-size:13px;outline:none;color:var(--td-text-1);background:var(--td-bg-page);" />
+          </div>
+
+          <!-- 成员名单 Toggle -->
+          <div class="cell" @click="f.rosterEnabled=!f.rosterEnabled" style="border-top:1px solid var(--td-border);">
+            <div>
+              <div class="cell-label">启用成员名单</div>
+              <div class="cell-label-sub">开启后可录入固定名单，打卡时从名单中选人</div>
+            </div>
+            <div class="toggle-wrap" :class="f.rosterEnabled?'on':''" style="margin-left:auto;flex-shrink:0;">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+
+          <!-- 成员名单编辑区（仅启用时展示） -->
+          <div v-if="f.rosterEnabled" style="padding:12px 16px;border-top:1px solid var(--td-border);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <span style="font-size:13px;font-weight:600;color:var(--td-text-1);">成员名单</span>
+              <span style="font-size:12px;color:var(--td-text-3);">已录入 {{ rosterCount }} 人</span>
+            </div>
+
+            <!-- 导入方式按钮行 -->
+            <div style="display:flex;gap:8px;margin-bottom:10px;">
+              <button @click="showT('调起相册/相机选图，OCR 识别名单...')"
+                style="flex:1;height:36px;display:flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--td-border);border-radius:var(--td-radius-m);background:var(--td-bg-page);font-size:13px;color:var(--td-text-2);cursor:pointer;">
+                <i class="fas fa-image" style="font-size:12px;"></i>从图片导入
+              </button>
+              <button @click="pasteRoster"
+                style="flex:1;height:36px;display:flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--td-border);border-radius:var(--td-radius-m);background:var(--td-bg-page);font-size:13px;color:var(--td-text-2);cursor:pointer;">
+                <i class="fas fa-clipboard" style="font-size:12px;"></i>粘贴示例
+              </button>
+            </div>
+
+            <textarea
+              v-model="f.rosterText"
+              class="roster-textarea"
+              placeholder="一行一个姓名，或用逗号分隔。姓名可带编号，用 & 分隔，如：张三&1, 李四&8，或直接写 张三、李四、王五"></textarea>
+
+            <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+              <span @click="f.rosterText=''" style="font-size:12px;color:var(--td-text-3);cursor:pointer;padding:4px 0;">
+                <i class="fas fa-eraser" style="margin-right:3px;font-size:11px;"></i>一键清空
+              </span>
+            </div>
+            <p style="font-size:11px;color:var(--td-text-3);line-height:1.6;margin-top:6px;padding-top:8px;border-top:1px solid var(--td-border);">
+              <i class="fas fa-circle-info" style="margin-right:3px;"></i>
+              成员通过邀请链接加入时，需从名单中选择自己对应的姓名完成身份确认
+            </p>
+          </div>
+        </div>
+      </template>
+
+      <!-- ② 基本信息 -->
+      <div class="group-label">基本信息</div>
+      <div class="cell-group" style="margin:0 16px;">
+
+        <!-- 封面图 -->
+        <div style="padding:12px 16px;border-bottom:1px solid var(--td-border);">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;">
+            <span style="font-size:13px;color:var(--td-text-2);">封面图</span>
+            <span style="font-size:11px;color:var(--td-text-3);">未上传时由 AI 自动生成</span>
+          </div>
+
+          <!-- AI 生成预览 -->
+          <div v-if="f.coverMode==='ai'"
+            :style="'border-radius:10px;height:116px;background:'+aiThemes[f.aiTheme].bg+';position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:11px 13px;'">
+            <!-- 顶部：止观实验室 logo + AI badge -->
+            <div style="display:flex;align-items:center;gap:5px;">
+              <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.92);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span style="font-size:9px;font-weight:900;color:#222;">止</span>
+              </div>
+              <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.88);letter-spacing:0.5px;">止观实验室</span>
+              <span style="margin-left:auto;background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.82);font-size:9.5px;font-weight:600;padding:2px 8px;border-radius:100px;border:1px solid rgba(255,255,255,0.25);">✦ AI 生成</span>
+            </div>
+            <!-- 底部：项目名 + 装饰线 -->
+            <div>
+              <div style="width:22px;height:2px;background:rgba(255,255,255,0.4);border-radius:1px;margin-bottom:5px;"></div>
+              <div style="font-size:15px;font-weight:700;color:#fff;line-height:1.3;text-shadow:0 1px 4px rgba(0,0,0,0.3);">{{ f.name || '打卡项目名称' }}</div>
+            </div>
+          </div>
+
+          <!-- 用户自定义封面 -->
+          <div v-else
+            style="border-radius:10px;height:116px;background:linear-gradient(135deg,#2a2a2a,#555);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:11px 13px;">
+            <div style="display:flex;align-items:center;gap:5px;">
+              <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.92);display:flex;align-items:center;justify-content:center;">
+                <span style="font-size:9px;font-weight:900;color:#222;">止</span>
+              </div>
+              <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.88);">止观实验室</span>
+              <span style="margin-left:auto;background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.82);font-size:9.5px;font-weight:600;padding:2px 8px;border-radius:100px;border:1px solid rgba(255,255,255,0.25);">📷 自定义</span>
+            </div>
+            <div>
+              <div style="width:22px;height:2px;background:rgba(255,255,255,0.4);border-radius:1px;margin-bottom:5px;"></div>
+              <div style="font-size:15px;font-weight:700;color:#fff;line-height:1.3;text-shadow:0 1px 4px rgba(0,0,0,0.3);">{{ f.name || '打卡项目名称' }}</div>
+            </div>
+          </div>
+
+          <!-- 封面操作按钮 -->
+          <div style="display:flex;gap:8px;margin-top:9px;">
+            <button v-if="f.coverMode==='ai'" class="cover-action-btn" @click="regenCover">
+              <i class="fas fa-rotate" style="font-size:11px;"></i>重新生成
+            </button>
+            <button v-else class="cover-action-btn" @click="f.coverMode='ai'">
+              <i class="fas fa-sparkles" style="font-size:11px;"></i>切换 AI 封面
+            </button>
+            <button class="cover-action-btn" @click="f.coverMode==='ai'?f.coverMode='custom':f.coverMode='ai'">
+              <i class="fas fa-image" style="font-size:11px;"></i>{{ f.coverMode==='ai' ? '上传自定义图片' : '移除自定义图片' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- 项目名称 -->
+        <div style="padding:12px 16px;border-bottom:1px solid var(--td-border);">
+          <div style="font-size:13px;color:var(--td-text-2);margin-bottom:7px;">
+            项目名称 <span style="color:var(--td-error);">*</span>
+          </div>
+          <input v-model="f.name" class="td-input" :class="submitted&&!f.name.trim()?'error':''"
+            placeholder="例如：每日阅读30分钟" maxlength="20" />
+          <div class="td-char-count">{{ f.name.length }}/20</div>
+        </div>
+
+        <!-- 打卡描述 -->
+        <div style="padding:12px 16px;">
+          <div style="font-size:13px;color:var(--td-text-2);margin-bottom:7px;">
+            打卡描述 <span style="color:var(--td-error);">*</span>
+          </div>
+          <textarea v-model="f.desc" class="td-textarea" :class="submitted&&!f.desc.trim()?'error':''"
+            rows="3" maxlength="100" placeholder="请描述打卡目标、具体要求和注意事项..."></textarea>
+          <div class="td-char-count">{{ f.desc.length }}/100</div>
+        </div>
+      </div>
+
+      <!-- ③ 活动时间 -->
+      <div class="group-label">活动时间</div>
+      <div class="cell-group" style="margin:0 16px;">
+        <div class="cell" style="cursor:default;">
+          <div class="cell-label">开始时间 <span style="color:var(--td-error);font-size:12px;">*</span></div>
+          <input type="date" v-model="f.start"
+            style="border:none;font-size:13px;color:var(--td-text-2);outline:none;background:transparent;text-align:right;" />
+        </div>
+        <div class="cell" style="cursor:default;">
+          <div class="cell-label">
+            结束时间 <span style="color:var(--td-error);font-size:12px;">*</span>
+            <span v-if="days>0" style="color:var(--td-error);font-size:12px;font-weight:500;margin-left:6px;">（持续打卡 {{ days }} 天）</span>
+          </div>
+          <input type="date" v-model="f.end"
+            style="border:none;font-size:13px;color:var(--td-text-2);outline:none;background:transparent;text-align:right;" />
+        </div>
+      </div>
+
+      <!-- ④ 打卡规则 -->
+      <div class="group-label">打卡规则</div>
+      <div class="cell-group" style="margin:0 16px;">
+
+        <!-- 打卡频率 -->
+        <div class="cell" @click="showFreqSheet=true">
+          <div class="cell-label">打卡频率</div>
+          <div class="cell-value">{{ f.frequency }}</div>
+          <i class="fas fa-chevron-right cell-arrow"></i>
+        </div>
+
+        <!-- 可打卡时间 -->
+        <div class="cell" style="cursor:default;">
+          <div class="cell-label">可打卡时间</div>
+          <div class="time-range" style="margin-left:auto;">
+            <input type="time" v-model="f.timeFrom" style="width:80px;" />
+            <span style="color:var(--td-text-3);font-size:13px;">-</span>
+            <input type="time" v-model="f.timeTo" style="width:80px;" />
+          </div>
+        </div>
+
+        <!-- 允许一天多次打卡 -->
+        <div class="cell" @click="f.multiCheckin=!f.multiCheckin">
+          <div class="cell-label">允许一天内多次打卡</div>
+          <div class="toggle-wrap" :class="f.multiCheckin?'on':''" style="margin-left:auto;">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+
+        <!-- 允许补卡 -->
+        <div class="cell" @click="f.makeup=!f.makeup">
+          <div class="cell-label">允许补卡</div>
+          <div class="toggle-wrap" :class="f.makeup?'on':''">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+
+        <!-- 补卡次数（仅允许补卡时显示） -->
+        <template v-if="f.makeup">
+          <div class="cell">
+            <div class="cell-label">补卡次数上限</div>
+            <div class="cell-value">总限 {{ f.makeupMax }} 次</div>
+            <i class="fas fa-chevron-right cell-arrow"></i>
+          </div>
+          <div class="cell">
+            <div class="cell-label">限制补卡时间</div>
+            <div class="cell-value">打卡终止前</div>
+            <i class="fas fa-chevron-right cell-arrow"></i>
+          </div>
+        </template>
+
+      </div>
+
+      <div style="height:8px;"></div>
+    </div>
+  </div>
+
+  <!-- 底部操作 -->
+  <div style="background:var(--td-bg-card);padding:10px 16px;border-top:1px solid var(--td-border);flex-shrink:0;">
+    <button class="td-btn td-btn-primary td-btn-block" style="height:48px;font-size:16px;" @click="submit">
+      {{ editMode ? '保存修改' : '立即发布' }}
+    </button>
+  </div>
+
+  <div v-if="toast" class="td-toast">{{ toast }}</div>
+
+  <!-- ── 打卡频率选择弹层 ── -->
+  <div v-if="showFreqSheet" class="td-overlay" @click="showFreqSheet=false"></div>
+  <div v-if="showFreqSheet" class="td-sheet" style="padding:0 0 8px;">
+    <div style="padding:16px 16px 12px;border-bottom:1px solid var(--td-border);display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:15px;font-weight:700;color:var(--td-text-1);">选择打卡频率</span>
+      <span style="font-size:13px;color:var(--td-text-3);cursor:pointer;padding:4px 0;" @click="showFreqSheet=false">取消</span>
+    </div>
+    <div v-for="opt in freqOptions" :key="opt.val"
+      @click="f.frequency=opt.val; showFreqSheet=false"
+      style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--td-border);cursor:pointer;"
+      :style="f.frequency===opt.val ? 'background:var(--td-bg-hover);' : ''"
+    >
+      <div>
+        <div style="font-size:15px;color:var(--td-text-1);" :style="f.frequency===opt.val?'font-weight:600;':''">{{ opt.val }}</div>
+        <div v-if="opt.desc" style="font-size:11px;color:var(--td-text-3);margin-top:2px;">{{ opt.desc }}</div>
+      </div>
+      <i v-if="f.frequency===opt.val" class="fas fa-check" style="font-size:15px;color:var(--td-text-1);"></i>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/vue.js"></script>
+<script>
+function _nav(p, params) {
+  if (window.parent !== window) window.parent.postMessage({ navigate: p, params: params || '' }, '*');
+}
+
+var DEMO_ROSTER = '张建华\n李晓平\n吕文眉\n何赵英\n郑向青\n郑碧霄\n徐海飞\n陈乐鸥\n刘香莲\n叶朝勇\n王雪平\n谢杰妹\n陈育容\n何文新\n黄晓光\n张纤\n蔡小琴\n刘巧武\n方敏\n魏英\n薛杨';
+
+new Vue({
+  el: '#app',
+  data: function() {
+    var isEdit = location.search.indexOf('edit=1') >= 0;
+    var m = location.search.match(/[?&]name=([^&]*)/);
+    var editName = m ? decodeURIComponent(m[1]) : '';
+    return {
+      toast: '',
+      submitted: false,
+      editMode: isEdit,
+      showFreqSheet: false,
+      aiThemes: [
+        { bg: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 55%, #0f3460 100%)' },
+        { bg: 'linear-gradient(135deg, #2d1b69 0%, #11998e 100%)' },
+        { bg: 'linear-gradient(135deg, #232526 0%, #3a3d40 100%)' },
+        { bg: 'linear-gradient(135deg, #1f4037 0%, #2c6e49 100%)' },
+        { bg: 'linear-gradient(135deg, #3a1c71 0%, #d76d77 70%, #ffaf7b 100%)' },
+      ],
+      freqOptions: [
+        { val: '每月',     desc: '每自然月打卡一次' },
+        { val: '每周',     desc: '每自然周打卡一次' },
+        { val: '每天',     desc: '每天均需打卡' },
+        { val: '法定工作日', desc: '周一至周五，节假日除外' },
+        { val: '法定节假日', desc: '国家法定节假日当天' },
+      ],
+      f: {
+        coverMode:    isEdit ? 'custom' : 'ai',
+        aiTheme:      0,
+        name:         editName || '',
+        desc:         isEdit ? '每天完成30分钟专注阅读，并在打卡时记录心得感想。' : '',
+        start:        isEdit ? '2026-04-28' : new Date().toISOString().split('T')[0],
+        end:          isEdit ? '2026-05-19' : '',
+        mode:         isEdit ? 'invite' : 'open',
+        deadline:     isEdit ? '2026-04-30' : '',
+        rosterEnabled: isEdit,
+        rosterText:   isEdit ? DEMO_ROSTER : '',
+        frequency:    '每天',
+        timeFrom:     '00:00',
+        timeTo:       '23:59',
+        multiCheckin: false,
+        makeup:       false,
+        makeupMax:    30,
+      }
+    };
+  },
+  computed: {
+    days: function() {
+      if (!this.f.start || !this.f.end) return 0;
+      var d = new Date(this.f.end) - new Date(this.f.start);
+      return d > 0 ? Math.ceil(d / 86400000) + 1 : 0;
+    },
+    rosterCount: function() {
+      if (!this.f.rosterText.trim()) return 0;
+      // 支持换行或逗号分隔，过滤空行
+      return this.f.rosterText.split(/[\n,，]/).filter(function(s){ return s.trim(); }).length;
+    }
+  },
+  methods: {
+    regenCover: function() {
+      this.f.aiTheme = (this.f.aiTheme + 1) % this.aiThemes.length;
+      this.showT('AI 封面已重新生成');
+    },
+    pasteRoster: function() {
+      this.f.rosterText = DEMO_ROSTER;
+      this.showT('已粘贴示例名单（' + this.rosterCount + ' 人）');
+    },
+    submit: function() {
+      this.submitted = true;
+      if (!this.f.name.trim()) { this.showT('请填写项目名称'); return; }
+      if (!this.f.desc.trim()) { this.showT('请填写打卡描述'); return; }
+      if (!this.f.start || !this.f.end) { this.showT('请选择活动时间'); return; }
+      if (this.f.mode === 'invite') {
+        if (!this.f.deadline) { this.showT('请设置加入截止日期'); return; }
+        if (this.f.rosterEnabled && !this.f.rosterText.trim()) { this.showT('已启用成员名单，请录入或导入名单内容'); return; }
+      }
+      this.showT(this.editMode ? '✓ 修改已保存' : '✓ 发布成功！');
+      var self = this;
+      setTimeout(function() { _nav('checkin-detail'); }, 1200);
+    },
+    showT: function(m) {
+      this.toast = m;
+      var self = this;
+      setTimeout(function() { self.toast = ''; }, 2000);
+    }
+  }
+});
+</script>
+</body>
+</html>

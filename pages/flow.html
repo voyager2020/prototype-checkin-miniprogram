@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>业务流程</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      background: #f0f0f0;
+    }
+    body { display: flex; flex-direction: column; }
+
+    .header {
+      height: 48px; background: #1a1a1a; flex-shrink: 0;
+      display: flex; align-items: center; padding: 0 20px; gap: 12px;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .header-title { color: #fff; font-size: 14px; font-weight: 700; }
+    .header-sub   { color: #888; font-size: 11px; }
+
+    .legend {
+      min-height: 36px; background: #fff; border-bottom: 1px solid #e8e8e8; flex-shrink: 0;
+      display: flex; flex-wrap: wrap; align-items: center; padding: 8px 20px; gap: 16px;
+      position: sticky; top: 48px; z-index: 9;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #666; }
+    .lg-start  { width:14px;height:14px;border-radius:7px;background:#1a1a1a; }
+    .lg-step   { width:14px;height:10px;border-radius:2px;background:#fff;border:1px solid #bbb; }
+    .lg-branch { width:12px;height:12px;background:#f5f5f5;border:1px solid #bbb;transform:rotate(45deg); }
+
+    .content {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px 20px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .content::-webkit-scrollbar { width: 6px; }
+    .content::-webkit-scrollbar-thumb { background: #bbb; border-radius: 3px; }
+
+    /* 卡片：禁止 overflow:hidden，否则会裁切 Mermaid SVG */
+    .flow-card {
+      background: #fff; border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      overflow: visible;
+    }
+    .flow-card-head {
+      padding: 12px 16px 10px; border-bottom: 1px solid #f0f0f0;
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .flow-num {
+      width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+      background: #1a1a1a; color: #fff;
+      font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .flow-name { font-size: 14px; font-weight: 700; color: #111; }
+    .flow-desc { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.55; }
+
+    .flow-body {
+      padding: 16px 12px 20px;
+      overflow-x: auto;
+      overflow-y: visible;
+      min-height: 80px;
+    }
+    .flow-body .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+    .flow-body .mermaid svg {
+      max-width: 100%;
+      height: auto !important;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <span class="header-title">业务流程</span>
+    <span class="header-sub">止观实验室 · 打卡小程序 · 8 个核心流程</span>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="lg-start"></div>开始 / 结束</div>
+    <div class="legend-item"><div class="lg-step"></div>操作步骤</div>
+    <div class="legend-item"><div class="lg-branch"></div>判断分支</div>
+    <div class="legend-item" style="color:#999;">流程方向为自左向右；较宽时在卡片内横向拖动查看完整图</div>
+  </div>
+
+  <div class="content">
+
+    <div class="flow-card">
+      <div class="flow-card-head">
+        <div class="flow-num">1</div>
+        <div>
+          <div class="flow-name">用户登录流程</div>
+          <div class="flow-desc">首次打开小程序的身份验证，含授权失败重试</div>
+        </div>
+      </div>
+      <div class="flow-body">
+        <div class="mermaid">
+flowchart LR
+    A([开始]) --> B[打开小程序]
+    B --> C{已登录?}
+    C -->|是| D[进入今日打卡首页]
+    C -->|否| E[我的页·未登录态]
+    E --> F[点击微信一键登录]
+    F --> G{授权成功?}
+    G -->|是| D
+    G -->|否| H[提示授权失败]
+    H --> E
+    D --> Z([结束])
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <div class="flow-card-head">
+        <div class="flow-num">2</div>
+        <div>
+          <div class="flow-name">发起打卡流程</div>
+          <div class="flow-desc">创建打卡项；开放 / 封闭模式；封闭下可选成员名单</div>
+        </div>
+      </div>
+      <div class="flow-body">
+        <div class="mermaid">
+flowchart LR
+    A([开始]) --> B[打卡项列表]
+    B --> C[点击发起]
+    C --> D[填写名称描述时间与频率]
+    D --> E{参与模式}
+    E -->|开放| P[跳过名单]
+    E -->|封闭| F[设置加入截止日期]
+    F --> G{启用成员名单}
+    G -->|是| H[录入或图片导入名单]
+    G -->|否| P
+    H --> I{必填完整}
+    I -->|否| J[提示补填]
+    J --> D
+    I -->|是| P
+    P --> K[立即发布]
+    K --> L[发布成功跳转详情待开始]
+    L --> Z([结束])
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <div class="flow-card-head">
+        <div class="flow-num">3</div>
+        <div>
+          <div class="flow-name">加入打卡流程</div>
+          <div class="flow-desc">分享卡片进入；登录态；开放直加 / 封闭选名</div>
+        </div>
+      </div>
+      <div class="flow-body">
+        <div class="mermaid">
+flowchart LR
+    A([开始]) --> B[点击分享卡片]
+    B --> C{已登录}
+    C -->|否| D[微信授权]
+    D --> C
+    C -->|是| E[详情页未加入]
+    E --> F{项目状态}
+    F -->|待开始| G[加入后等待开始]
+    F -->|进行中| H[点击加入打卡]
+    H --> I{参与模式}
+    I -->|开放| J[加入成功]
+    I -->|封闭| K[从名单选姓名]
+    K --> L{姓名匹配}
+    L -->|是| J
+    L -->|否| M[联系发起人]
+    J --> N[显示立即打卡]
+    G --> Z([结束])
+    N --> Z
+    M --> Z
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <div class="flow-card-head">
+        <div class="flow-num">4</div>
+        <div>
+          <div class="flow-name">每日打卡流程</div>
+          <div class="flow-desc">普通模式填姓名；封闭模式从名单选择</div>
+        </div>
+      </div>
+      <div class="flow-body">
+        <div class="mermaid">
+flowchart LR
+    A([开始]) --> B[今日打卡选任务]
+    B --> C{打卡模式}
+    C -->|普通| D[确认页可改姓名]
+    C -->|封闭| E[封闭页选姓名]
+    D --> F[感想与照片选填]
+    E --> F
+    F --> G[确认打卡]
+    G --> H{姓名已填}
+    H -->|否| I[报错提示]
+    I --> D
+    H -->|是| J[成功遮罩]
+    J --> K{后续}
+    K -->|海报| L[海报页]
+    K -->|邀请| M[微信分享]
+    K -->|稍后| N[回今日]
+    L --> Z([结束])
+    M --> Z
+    N --> Z
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <div class="flow-card-head">
+        <div class="flow-num">5</div>
+        <div>
+          <div class="flow-name">修改打卡规则流程</div>
+          <div class="flow-desc">仅发起人；改信息、时间、规则或参与模式</div>
+        </div>
+      </div>
+      <div class="flow-body">
+        <div class="mermaid">
+flowchart LR
+    A([开始]) --> B[我发起的列表]
+    B --> C[点击修改]
+    C --> D[编辑表单预填]
+    D --> E{改什么}
+    E -->|信息| F[名称描述封面]
+    E -->|时间| G[起止日期]
+    E -->|规则| H[频率时段]
+    E -->|模式| I[开放封闭与名单]
+    F --> J[保存修改]
+    G --> J
+    H --> J
+    I --> J
+    J --> K{必填完整}
+    K -->|否| L[Toast补填]
+    L --> D
+    K -->|是| M[成功回详情]
+    M --> Z([结束])
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <div class="flow-card-head">
+        <div class="flow-num">6</div>
+        <div>
+          <div class="flow-name">人员管理流程</div>
+          <div class="flow-desc">列表、搜索、移除成员与二次确认</div>
+        </div>
+      </div>
+      <div class="flow-body">
+        <div class="mermaid">
+flowchart LR
+    A([开始]) --> B[详情页人员管理]
+    B --> C[查看成员列表]
+    C --> D{操作}
+    D -->|搜索| E[过滤姓名]
+    E --> C
+    D -->|移除| F[点删除]
+    F --> G[二次确认]
+    G --> H{确认移除}
+    H -->|取消| C
+    H -->|确认| I[移除并Toast]
+    I --> J{继续管理}
+    J -->|是| C
+    J -->|否| K[返回详情]
+    K --> Z([结束])
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <div class="flow-card-head">
+        <div class="flow-num">7</div>
+        <div>
+          <div class="flow-name">分享与传播流程</div>
+          <div class="flow-desc">打卡后邀请、详情分享、品牌卡片；可归入流程3</div>
+        </div>
+      </div>
+      <div class="flow-body">
+        <div class="mermaid">
+flowchart LR
+    A([开始]) --> B{场景}
+    B -->|成功后| C[成功遮罩邀请]
+    B -->|主动| D[详情页分享]
+    B -->|品牌| E[品牌分享卡片]
+    C --> F[微信分享面板]
+    D --> F
+    E --> F
+    F --> G[好友收到卡片]
+    G --> H{是否成员}
+    H -->|是| I[进今日打卡]
+    H -->|否| J[详情未加入]
+    J --> K[流程3加入]
+    I --> Z([结束])
+    K --> Z
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <div class="flow-card-head">
+        <div class="flow-num">8</div>
+        <div>
+          <div class="flow-name">催打卡流程</div>
+          <div class="flow-desc">进行中详情；催一催；复制或发群</div>
+        </div>
+      </div>
+      <div class="flow-body">
+        <div class="mermaid">
+flowchart LR
+    A([开始]) --> B[详情进行中]
+    B --> C[点催一催]
+    C --> D[Sheet未打卡名单]
+    D --> E{方式}
+    E -->|复制| F[剪贴板Toast]
+    E -->|发群| G[JSSDK分享群]
+    F --> H[手动粘贴]
+    H --> Z([结束])
+    G --> Z
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+(function () {
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'neutral',
+    securityLevel: 'loose',
+    flowchart: {
+      htmlLabels: true,
+      curve: 'basis',
+      padding: 14,
+      nodeSpacing: 45,
+      rankSpacing: 45,
+      useMaxWidth: true,
+    },
+  });
+
+  function run() {
+    var els = document.querySelectorAll('.mermaid');
+    if (!els.length) return;
+    mermaid.run({ nodes: Array.from(els) }).catch(function (e) {
+      console.error('Mermaid render error', e);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', run);
+  } else {
+    run();
+  }
+})();
+</script>
+</body>
+</html>

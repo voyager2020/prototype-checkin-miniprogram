@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>生成海报</title>
+  <link rel="stylesheet" href="../assets/td.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    .theme-chip {
+      display: inline-flex; align-items: center; padding: 6px 14px;
+      border-radius: 100px; font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1.5px solid var(--td-border); background: var(--td-bg-page);
+      color: var(--td-text-2); transition: all .15s; white-space: nowrap; flex-shrink: 0;
+    }
+    .theme-chip .swatch {
+      width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; flex-shrink: 0;
+    }
+    .theme-chip.active { border-color: #111; background: #111; color: #fff; }
+    .theme-chip.active .swatch { display: none; }
+
+    .thumb-wrap {
+      border-radius: 8px; overflow: hidden; cursor: pointer;
+      border: 2px solid transparent; transition: border-color .15s;
+      position: relative; flex-shrink: 0; width: 100px;
+    }
+    .thumb-wrap.sel { border-color: #111; }
+    .thumb-wrap.sel::after {
+      content: '✓'; position: absolute; bottom: 5px; right: 5px;
+      width: 16px; height: 16px; border-radius: 50%; background: #111;
+      color: #fff; font-size: 9px; text-align: center; line-height: 16px;
+    }
+    .thumb-inner {
+      height: 100px; padding: 8px; display: flex; flex-direction: column;
+    }
+    .t-num { font-weight: 900; color: #fff; line-height: 1; }
+    .t-sub { color: rgba(255,255,255,0.7); font-size: 9px; margin-top: 2px; }
+    .t-tip { color: rgba(255,255,255,0.45); font-size: 8px; }
+
+    .poster-card { border-radius: 14px; overflow: hidden; box-shadow: 0 6px 24px rgba(0,0,0,0.14); }
+    .poster-inner { padding: 20px; min-height: 310px; display: flex; flex-direction: column; }
+    .p-num { font-weight: 900; color: #fff; line-height: 1; }
+    .p-sub { color: rgba(255,255,255,0.8); }
+    .p-dim { color: rgba(255,255,255,0.55); }
+  </style>
+</head>
+<body style="display:flex;flex-direction:column;height:100vh;overflow:hidden;background:var(--td-bg-page);">
+<div id="app" v-cloak style="display:flex;flex-direction:column;height:100%;">
+
+  <!-- NavBar -->
+  <div class="td-navbar">
+    <div class="td-statusbar"></div>
+    <div class="td-navbar-content">
+      <div class="td-navbar-back" @click="_nav('profile')"><i class="fas fa-chevron-left"></i></div>
+      <span class="td-navbar-title">生成海报</span>
+    </div>
+  </div>
+
+  <div style="flex:1;overflow-y:auto;" class="no-sb">
+
+    <!-- ① 主题选择（横向滚动 chips） -->
+    <div style="background:#fff;border-bottom:1px solid #e5e5e5;padding:10px 16px;display:flex;gap:8px;overflow-x:auto;" class="no-sb">
+      <div v-for="t in themes" :key="t.k"
+        class="theme-chip" :class="{ active: selTheme === t.k }"
+        @click="selTheme = t.k; selLayout = 0">
+        <div class="swatch" :style="{ background: t.dot }"></div>
+        {{ t.label }}
+      </div>
+    </div>
+
+    <!-- ② 缩略图（单行横向滚动） -->
+    <div style="background:#fff;padding:12px 16px 14px;border-bottom:1px solid #e5e5e5;overflow-x:auto;" class="no-sb">
+      <div style="display:flex;gap:8px;width:max-content;">
+        <div v-for="lo in layouts" :key="lo.id"
+          class="thumb-wrap" :class="{ sel: selLayout === lo.id }"
+          @click="selLayout = lo.id">
+          <div class="thumb-inner" :style="{ background: activeTheme.bg }">
+
+            <!-- 样式1：居中大数字 -->
+            <div v-if="lo.id === 0"
+              style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+              <div class="t-num" style="font-size:30px;">12</div>
+              <div class="t-sub">天连续打卡</div>
+              <div class="t-tip" style="margin-top:auto;">每日阅读</div>
+            </div>
+
+            <!-- 样式2：左对齐 -->
+            <div v-if="lo.id === 1" style="flex:1;">
+              <div class="t-num" style="font-size:34px;">12</div>
+              <div class="t-sub">天 · 连续打卡</div>
+              <div class="t-tip" style="margin-top:auto;">每日阅读</div>
+            </div>
+
+            <!-- 样式3：数字在底部 -->
+            <div v-if="lo.id === 2" style="flex:1;display:flex;flex-direction:column;">
+              <div class="t-tip">每日阅读30分钟</div>
+              <div style="flex:1;"></div>
+              <div style="display:flex;align-items:baseline;gap:3px;">
+                <div class="t-num" style="font-size:32px;">12</div>
+                <div class="t-sub">天</div>
+              </div>
+            </div>
+
+            <!-- 样式4：内嵌白框 -->
+            <div v-if="lo.id === 3"
+              style="flex:1;border:1px solid rgba(255,255,255,0.4);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+              <div class="t-num" style="font-size:26px;">12</div>
+              <div class="t-sub">天连续打卡</div>
+            </div>
+
+            <!-- 样式5：横向分割 -->
+            <div v-if="lo.id === 4" style="flex:1;display:flex;align-items:center;gap:7px;">
+              <div class="t-num" style="font-size:30px;flex-shrink:0;">12</div>
+              <div style="width:1px;height:24px;background:rgba(255,255,255,0.3);flex-shrink:0;"></div>
+              <div>
+                <div class="t-sub" style="font-size:9px;">天</div>
+                <div class="t-tip" style="font-size:8px;">连续打卡</div>
+              </div>
+            </div>
+
+            <!-- 样式6：极简文字 -->
+            <div v-if="lo.id === 5"
+              style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+              <div class="t-num" style="font-size:34px;letter-spacing:-2px;">12</div>
+              <div class="t-tip" style="letter-spacing:2px;margin-top:4px;">DAY STREAK</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ 海报用语 -->
+    <div style="background:#fff;padding:12px 16px;border-bottom:1px solid #e5e5e5;">
+      <div class="td-input-label" style="margin-bottom:8px;">
+        <i class="fas fa-pen" style="margin-right:5px;font-size:11px;"></i>
+        海报金句
+      </div>
+      <input v-model="quote" class="td-input" placeholder="坚持打卡，预见更好的自己" maxlength="24" />
+      <div class="td-char-count">{{ quote.length }}/24</div>
+    </div>
+
+    <!-- ④ 海报大预览 -->
+    <div style="padding:16px;display:flex;justify-content:center;">
+      <div class="poster-card" style="width:220px;">
+        <div class="poster-inner" :style="{ background: activeTheme.bg }">
+
+          <!-- 用户信息行（无等级徽章） -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+            <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;">😊</div>
+            <div class="p-sub" style="font-size:13px;font-weight:700;">小明</div>
+          </div>
+
+          <!-- 布局内容区 -->
+          <!-- Layout 0 -->
+          <div v-if="selLayout === 0"
+            style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+            <div class="p-num" style="font-size:64px;">12</div>
+            <div class="p-sub" style="font-size:14px;margin-top:4px;">天连续打卡</div>
+          </div>
+
+          <!-- Layout 1 -->
+          <div v-if="selLayout === 1" style="flex:1;">
+            <div class="p-num" style="font-size:62px;">12</div>
+            <div class="p-sub" style="font-size:14px;margin-top:4px;">天 · 连续打卡</div>
+          </div>
+
+          <!-- Layout 2 -->
+          <div v-if="selLayout === 2" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;">
+            <div style="display:flex;align-items:baseline;gap:6px;">
+              <div class="p-num" style="font-size:62px;">12</div>
+              <div class="p-sub" style="font-size:15px;">天</div>
+            </div>
+            <div class="p-dim" style="font-size:12px;margin-top:2px;">连续打卡</div>
+          </div>
+
+          <!-- Layout 3 -->
+          <div v-if="selLayout === 3"
+            style="flex:1;border:1.5px solid rgba(255,255,255,0.4);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 -4px;">
+            <div class="p-num" style="font-size:58px;">12</div>
+            <div class="p-sub" style="font-size:13px;margin-top:6px;">天连续打卡</div>
+          </div>
+
+          <!-- Layout 4 -->
+          <div v-if="selLayout === 4" style="flex:1;display:flex;align-items:center;gap:16px;">
+            <div class="p-num" style="font-size:58px;flex-shrink:0;">12</div>
+            <div style="width:1px;height:52px;background:rgba(255,255,255,0.3);flex-shrink:0;"></div>
+            <div>
+              <div style="color:#fff;font-size:15px;font-weight:600;">天</div>
+              <div class="p-dim" style="font-size:12px;margin-top:4px;">连续打卡</div>
+            </div>
+          </div>
+
+          <!-- Layout 5 -->
+          <div v-if="selLayout === 5"
+            style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+            <div class="p-num" style="font-size:66px;letter-spacing:-3px;">12</div>
+            <div class="p-dim" style="font-size:10px;letter-spacing:3px;margin-top:8px;text-transform:uppercase;">DAY STREAK</div>
+          </div>
+
+          <!-- 底部：项目 + 用语 + 二维码（所有布局共用） -->
+          <div style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:12px;">
+            <div class="p-dim" style="font-size:10px;margin-bottom:6px;">📚 每日阅读30分钟</div>
+            <div style="color:#fff;font-size:11px;font-weight:500;line-height:1.6;">{{ displayQuote }}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:12px;">
+            <div style="width:28px;height:28px;background:rgba(255,255,255,0.2);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="fas fa-qrcode" style="color:#fff;font-size:12px;"></i>
+            </div>
+            <span class="p-dim" style="font-size:9px;">扫码加入打卡挑战</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div style="height:4px;"></div>
+  </div>
+
+  <!-- 底部操作 -->
+  <div style="background:#fff;padding:10px 16px;border-top:1px solid #e5e5e5;display:flex;gap:8px;flex-shrink:0;">
+    <button class="td-btn td-btn-gray" style="flex:1;height:40px;font-size:13px;" @click="showT('已保存到相册')">
+      <i class="fas fa-download" style="margin-right:4px;"></i>保存
+    </button>
+    <button class="td-btn td-btn-outline" style="flex:1;height:40px;font-size:13px;" @click="showT('分享到朋友圈...')">
+      <i class="fab fa-weixin" style="margin-right:4px;"></i>朋友圈
+    </button>
+    <button class="td-btn td-btn-primary" style="flex:1;height:40px;font-size:13px;" @click="showT('发给好友...')">
+      <i class="fas fa-share" style="margin-right:4px;"></i>发好友
+    </button>
+  </div>
+
+  <div v-if="toast" class="td-toast">{{ toast }}</div>
+</div>
+
+<script src="../assets/js/vue.js"></script>
+<script>
+function _nav(p) { if (window.parent !== window) window.parent.postMessage({ navigate: p }, '*'); }
+new Vue({
+  el: '#app',
+  data: {
+    selTheme: 'dark',
+    selLayout: 0,
+    quote: '',
+    toast: '',
+    themes: [
+      { k: 'dark',  label: '深夜黑', dot: '#1a1a1a', bg: 'linear-gradient(160deg,#1a1a1a 0%,#333 100%)' },
+      { k: 'mid',   label: '烟灰',   dot: '#666',    bg: 'linear-gradient(160deg,#555 0%,#888 100%)' },
+      { k: 'light', label: '晨雾白', dot: '#aaa',    bg: 'linear-gradient(160deg,#888 0%,#bbb 100%)' }
+    ],
+    layouts: [
+      { id: 0, name: '居中' },
+      { id: 1, name: '左对齐' },
+      { id: 2, name: '底部数字' },
+      { id: 3, name: '内嵌框' },
+      { id: 4, name: '横向' },
+      { id: 5, name: '极简' }
+    ]
+  },
+  computed: {
+    activeTheme: function() {
+      for (var i = 0; i < this.themes.length; i++) {
+        if (this.themes[i].k === this.selTheme) return this.themes[i];
+      }
+      return this.themes[0];
+    },
+    displayQuote: function() {
+      var q = this.quote.trim();
+      return q ? q : '坚持打卡，预见更好的自己';
+    }
+  },
+  methods: {
+    showT: function(m) {
+      this.toast = m;
+      var self = this;
+      setTimeout(function() { self.toast = ''; }, 2000);
+    }
+  }
+});
+</script>
+</body>
+</html>

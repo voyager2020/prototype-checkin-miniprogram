@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>邀请落地页</title>
+  <link rel="stylesheet" href="../assets/td.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body style="display:flex;flex-direction:column;height:100vh;overflow:hidden;">
+<div id="app" v-cloak style="display:flex;flex-direction:column;height:100%;background:var(--td-bg-page);">
+
+  <!-- Hero -->
+  <div class="td-hero" style="padding:36px 20px 20px;flex-shrink:0;">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:50px;margin-bottom:10px;">📚</div>
+      <h1 class="td-hero-text" style="font-size:22px;font-weight:800;margin-bottom:8px;">每日阅读30分钟</h1>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;">
+        <span class="td-hero-muted">21天挑战</span>
+        <span class="td-hero-muted">·</span>
+        <span class="td-hero-muted">第12/21天</span>
+        <span class="td-hero-muted">·</span>
+        <span class="td-hero-muted">28人参与</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <div class="td-hero-card" style="flex:1;">
+        <div class="td-hero-text" style="font-size:22px;font-weight:800;">86%</div>
+        <div class="td-hero-muted" style="font-size:11px;margin-top:3px;">今日完成率</div>
+      </div>
+      <div class="td-hero-card" style="flex:1;">
+        <div class="td-hero-text" style="font-size:22px;font-weight:800;">9天</div>
+        <div class="td-hero-muted" style="font-size:11px;margin-top:3px;">剩余天数</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex:1;overflow-y:auto;" class="no-sb">
+    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;">
+
+      <!-- 打卡规则 -->
+      <div class="td-card">
+        <div class="td-card-header">打卡规则</div>
+        <div style="padding:8px 0;">
+          <div v-for="r in rules" :key="r.title" style="display:flex;align-items:flex-start;gap:10px;padding:8px 16px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--td-bg-page);border:1px solid var(--td-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i :class="r.icon" style="font-size:11px;color:var(--td-text-2);"></i>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--td-text-1);">{{ r.title }}</div>
+              <div style="font-size:11px;color:var(--td-text-3);margin-top:2px;">{{ r.desc }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 成员 -->
+      <div class="td-card">
+        <div class="td-card-header">已加入成员</div>
+        <div style="padding:12px 16px;">
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:10px;">
+            <div v-for="(m,i) in members" :key="i"
+              style="width:36px;height:36px;border-radius:50%;background:var(--td-bg-page);border:2px solid #fff;box-shadow:var(--td-shadow-1);display:flex;align-items:center;justify-content:center;font-size:18px;margin-left:-6px;"
+              :style="i===0?'margin-left:0;':''">{{ m }}</div>
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--td-bg-page);border:2px solid #fff;box-shadow:var(--td-shadow-1);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--td-text-2);margin-left:-6px;">+24</div>
+            <span style="font-size:12px;color:var(--td-text-3);margin-left:4px;">共 28 人</span>
+          </div>
+          <div style="background:var(--td-bg-page);border-radius:8px;padding:8px 12px;border:1px solid var(--td-border);">
+            <span style="font-size:12px;color:var(--td-text-2);font-weight:500;">✓ 今天已有 19 人完成打卡</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 发起人 -->
+      <div class="td-card">
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--td-bg-page);border:1px solid var(--td-border);display:flex;align-items:center;justify-content:center;font-size:20px;">🦁</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--td-text-1);">阿杰 <span style="font-size:11px;background:var(--td-bg-page);color:var(--td-text-2);padding:1px 7px;border-radius:3px;margin-left:4px;border:1px solid var(--td-border);">发起人</span></div>
+            <div style="font-size:11px;color:var(--td-text-3);margin-top:3px;">2026年4月28日 发起此挑战</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:4px;"></div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div style="background:var(--td-bg-card);padding:12px 16px 16px;border-top:1px solid var(--td-border);flex-shrink:0;">
+    <button @click="joinNow" class="td-btn td-btn-primary td-btn-block" style="height:52px;font-size:16px;font-weight:700;border-radius:var(--td-radius-l);letter-spacing:.5px;">
+      立即加入并去打卡 →
+    </button>
+    <p style="text-align:center;font-size:12px;color:var(--td-text-3);margin-top:8px;">加入后可在首页看到今日任务</p>
+  </div>
+
+  <div v-if="toast" class="td-toast">{{ toast }}</div>
+</div>
+<script src="../assets/js/vue.js"></script>
+<script>
+function _nav(p){if(window.parent!==window)window.parent.postMessage({navigate:p},'*');}
+new Vue({
+  el:'#app',
+  data:{
+    toast:'',members:['🌸','🦁','😊','🐼'],
+    rules:[
+      {icon:'fas fa-clock',title:'打卡时段',desc:'全天 00:00 - 23:59 均可打卡'},
+      {icon:'fas fa-user',title:'姓名必填',desc:'打卡时需填写真实姓名便于统计'},
+      {icon:'fas fa-camera',title:'照片可选',desc:'可上传打卡照片（最多3张）'},
+    ]
+  },
+  methods:{joinNow(){this.toast='加入成功！正在跳转...';setTimeout(()=>_nav('home'),1200);}}
+});
+</script>
+</body>
+</html>

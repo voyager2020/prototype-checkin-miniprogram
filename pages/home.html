@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>今日打卡</title>
+  <link rel="stylesheet" href="../assets/td.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    .chip { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:100px; font-size:12px; font-weight:500; border:1px solid var(--td-border); background:var(--td-bg-page); color:var(--td-text-2); }
+    .task-card { background:var(--td-bg-card); border-radius:var(--td-radius-l); padding:14px; margin-bottom:8px; display:flex; align-items:center; gap:12px; box-shadow:var(--td-shadow-1); }
+    .task-card.done { opacity:0.45; }
+    .closed-badge { display:inline-flex; align-items:center; gap:3px; padding:1px 6px; border-radius:100px; font-size:10px; font-weight:600; background:var(--td-bg-hover); color:var(--td-text-2); border:1px solid var(--td-border); vertical-align:middle; margin-left:4px; }
+    .task-emoji { width:44px; height:44px; background:var(--td-bg-page); border-radius:var(--td-radius-l); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; border:1px solid var(--td-border); }
+    .section-lbl { font-size:11px; font-weight:700; color:var(--td-text-4); letter-spacing:1px; text-transform:uppercase; padding:10px 0 6px; }
+    .photo-slot { width:72px; height:72px; border:1.5px dashed var(--td-border); border-radius:var(--td-radius-m); display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; background:var(--td-bg-page); }
+    .photo-slot.filled { border-color:var(--td-text-1); background:var(--td-bg-hover); }
+  </style>
+</head>
+<body style="display:flex;flex-direction:column;height:100vh;overflow:hidden;">
+<div id="app" v-cloak style="display:flex;flex-direction:column;height:100%;background:var(--td-bg-page);">
+
+  <!-- NavBar -->
+  <div class="td-navbar">
+    <div class="td-statusbar"></div>
+    <div class="td-navbar-content">
+      <span class="td-navbar-title">今日打卡</span>
+    </div>
+  </div>
+
+  <!-- Header：问候 + 数据芯片 -->
+  <div style="background:var(--td-bg-card);padding:12px 16px 14px;border-bottom:1px solid var(--td-border);">
+    <p style="font-size:11px;color:var(--td-text-3);margin-bottom:4px;">{{ today }}</p>
+    <h2 style="font-size:17px;font-weight:700;color:var(--td-text-1);margin-bottom:10px;">{{ greeting }}，小明 👋</h2>
+    <div style="display:flex;gap:6px;white-space:nowrap;">
+      <span class="chip">✅ 已完成 2 项</span>
+      <span class="chip">⏰ 待打卡 3 项</span>
+      <span class="chip">🔥 连续 12 天</span>
+    </div>
+  </div>
+
+  <!-- Task List -->
+  <div style="flex:1;overflow-y:auto;padding:0 16px 16px;" class="no-sb">
+
+    <!-- 空态 -->
+    <div v-if="isEmpty" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 32px;text-align:center;">
+      <i class="fas fa-clipboard-list" style="font-size:44px;color:#e0e0e0;margin-bottom:16px;"></i>
+      <div style="font-size:15px;font-weight:600;color:var(--td-text-2);margin-bottom:8px;">今日暂无打卡任务</div>
+      <div style="font-size:13px;color:var(--td-text-3);line-height:1.6;margin-bottom:20px;">你还没有加入任何打卡项<br>去「打卡项」页面创建或加入吧</div>
+      <button class="td-btn td-btn-outline" style="height:38px;font-size:13px;" @click="_nav('checkin-list')">
+        <i class="fas fa-plus" style="margin-right:6px;font-size:11px;"></i>去加入打卡项
+      </button>
+    </div>
+
+    <template v-else>
+    <div class="section-lbl">待完成</div>
+    <div v-for="t in pending" :key="t.id" class="task-card">
+      <div class="task-emoji">{{ t.icon }}</div>
+      <div style="flex:1;min-width:0;">
+        <p style="font-size:14px;font-weight:600;color:var(--td-text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          {{ t.name }}
+          <span v-if="t.closed" class="closed-badge"><i class="fas fa-lock" style="font-size:8px;"></i>封闭</span>
+        </p>
+        <p style="font-size:12px;color:var(--td-text-3);margin-top:3px;">{{ t.time }} · {{ t.group }} · {{ t.n }}人</p>
+      </div>
+      <button class="td-btn td-btn-primary td-btn-sm" @click="open(t)">打卡</button>
+    </div>
+
+    <div class="td-divider-space"></div>
+    <div class="section-lbl">已完成</div>
+    <div v-for="t in done" :key="t.id" class="task-card done">
+      <div class="task-emoji">{{ t.icon }}</div>
+      <div style="flex:1;min-width:0;">
+        <p style="font-size:14px;font-weight:600;color:var(--td-text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.name }}</p>
+        <p style="font-size:12px;color:var(--td-text-3);margin-top:3px;">{{ t.time }} · {{ t.group }}</p>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <i class="fas fa-check-circle" style="font-size:18px;color:var(--td-text-2);"></i>
+        <p style="font-size:11px;color:var(--td-text-3);margin-top:3px;">{{ t.ct }}</p>
+      </div>
+    </div>
+    </template>
+  </div>
+
+  <!-- TabBar：今日 | 打卡项 | 我的 -->
+  <div class="td-tabbar">
+    <div class="td-tab-item active"><i class="fas fa-list-check"></i><span>今日</span></div>
+    <div class="td-tab-item" @click="_nav('checkin-list')"><i class="fas fa-border-all"></i><span>打卡项</span></div>
+    <div class="td-tab-item" @click="_nav('profile')"><i class="fas fa-user"></i><span>我的</span></div>
+  </div>
+
+  <!-- ── 打卡全屏页 ── -->
+  <div v-if="showCheckin"
+    style="position:fixed;inset:0;background:var(--td-bg-page);z-index:50;display:flex;flex-direction:column;">
+
+    <!-- 全屏页 NavBar -->
+    <div class="td-navbar">
+      <div class="td-statusbar"></div>
+      <div class="td-navbar-content">
+        <div class="td-navbar-back" @click="showCheckin=false"><i class="fas fa-chevron-left"></i></div>
+        <span class="td-navbar-title">确认打卡</span>
+      </div>
+    </div>
+
+    <!-- 打卡项信息条 -->
+    <div style="background:var(--td-bg-card);padding:12px 16px;border-bottom:1px solid var(--td-border);display:flex;align-items:center;gap:10px;">
+      <span style="font-size:28px;">{{ ct.icon }}</span>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--td-text-1);">{{ ct.name }}</div>
+        <div style="font-size:12px;color:var(--td-text-3);margin-top:2px;">{{ ct.time }} · {{ ct.group }}</div>
+      </div>
+    </div>
+
+    <!-- 表单内容（可滚动） -->
+    <div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px;" class="no-sb">
+
+      <!-- 姓名 -->
+      <div style="background:var(--td-bg-card);border-radius:var(--td-radius-l);padding:14px;box-shadow:var(--td-shadow-1);">
+        <div class="td-input-label" style="margin-bottom:8px;">姓名 <span class="required">*</span></div>
+        <input v-model="f.name" :class="['td-input', nameErr?'error':'']" placeholder="请填写姓名" />
+        <p v-if="nameErr" style="font-size:12px;color:var(--td-text-1);margin-top:6px;font-weight:500;"><i class="fas fa-exclamation-circle" style="margin-right:4px;"></i>请先填写姓名</p>
+      </div>
+
+      <!-- 今日感想 -->
+      <div style="background:var(--td-bg-card);border-radius:var(--td-radius-l);padding:14px;box-shadow:var(--td-shadow-1);">
+        <div class="td-input-label" style="margin-bottom:8px;">打卡内容或感想 <span style="color:var(--td-text-3);font-weight:400;">（选填）</span></div>
+        <textarea v-model="f.thought" class="td-textarea" rows="5" maxlength="200" placeholder="分享今天打卡的心得和感想..."></textarea>
+        <div class="td-char-count">{{ f.thought.length }}/200</div>
+      </div>
+
+      <!-- 打卡照片 -->
+      <div style="background:var(--td-bg-card);border-radius:var(--td-radius-l);padding:14px;box-shadow:var(--td-shadow-1);">
+        <div class="td-input-label" style="margin-bottom:10px;">打卡照片 <span style="color:var(--td-text-3);font-weight:400;">（选填，最多3张）</span></div>
+        <div style="display:flex;gap:10px;">
+          <div v-for="i in 3" :key="i" class="photo-slot" :class="f.photos>=i?'filled':''"
+            @click="f.photos<i&&(f.photos=i)">
+            <i class="fas fa-check" v-if="f.photos>=i" style="font-size:20px;color:var(--td-text-1);"></i>
+            <template v-else>
+              <i class="fas fa-camera" style="font-size:20px;color:var(--td-text-4);"></i>
+              <span style="font-size:11px;color:var(--td-text-3);margin-top:5px;">添加</span>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:4px;"></div>
+    </div>
+
+    <!-- 底部固定：确认按钮 -->
+    <div style="background:var(--td-bg-card);padding:12px 16px 16px;border-top:1px solid var(--td-border);flex-shrink:0;">
+      <button class="td-btn td-btn-primary td-btn-block" style="height:48px;font-size:16px;" @click="submit">确认打卡</button>
+    </div>
+
+  </div>
+
+  <!-- ── 打卡成功弹层 ── -->
+  <div v-if="showOk" class="td-overlay"></div>
+  <div v-if="showOk" class="td-sheet" style="padding:28px 20px 32px;text-align:center;">
+    <div style="font-size:52px;margin-bottom:14px;">🎉</div>
+    <div style="font-size:18px;font-weight:700;color:var(--td-text-1);margin-bottom:6px;">打卡成功！</div>
+    <div style="font-size:13px;color:var(--td-text-2);margin-bottom:20px;">你今天又完成了一项好习惯</div>
+    <div style="background:var(--td-text-1);border-radius:12px;padding:16px;display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:20px;">
+      <span style="font-size:28px;">🔥</span>
+      <div style="text-align:left;">
+        <div style="color:rgba(255,255,255,0.65);font-size:12px;">连续打卡</div>
+        <div style="color:#fff;font-size:46px;font-weight:900;line-height:1.1;">13</div>
+        <div style="color:rgba(255,255,255,0.65);font-size:12px;margin-top:-2px;">天</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button class="td-btn td-btn-outline td-btn-block" @click="_nav('poster')">🎨 生成海报</button>
+      <button class="td-btn td-btn-primary td-btn-block" @click="showT('调起微信分享...')">👥 邀请朋友</button>
+      <button @click="showOk=false" style="font-size:13px;color:var(--td-text-3);padding:8px;cursor:pointer;background:none;border:none;">稍后再说</button>
+    </div>
+  </div>
+
+  <div v-if="toast" class="td-toast">{{ toast }}</div>
+</div>
+<script src="../assets/js/vue.js"></script>
+<script>
+function _nav(p) { if (window.parent !== window) window.parent.postMessage({ navigate: p }, '*'); }
+new Vue({
+  el: '#app',
+  data: {
+    isEmpty: location.search.indexOf('empty=1') >= 0,
+    showCheckin: false, showOk: false, ct: {}, nameErr: false, toast: '',
+    f: { name: '', thought: '', photos: 0 },
+    pending: [
+      { id:1, icon:'📚', name:'每日阅读30分钟', time:'全天', group:'自律打卡群', n:28 },
+      { id:2, icon:'🏃', name:'晨跑5公里', time:'06:00-09:00', group:'健身打卡营', n:15 },
+      { id:3, icon:'💪', name:'健身打卡', time:'全天', group:'运动挑战营', n:42 },
+      { id:6, icon:'🧘', name:'21天正念冥想营', time:'全天', group:'正念打卡群', n:20, closed:true },
+    ],
+    done: [
+      { id:4, icon:'💧', name:'每日喝水2000ml', time:'全天', group:'健康生活群', ct:'09:32' },
+      { id:5, icon:'🧘', name:'冥想10分钟', time:'晚间', group:'正念打卡', ct:'08:15' },
+    ]
+  },
+  computed: {
+    greeting() { const h = new Date().getHours(); return h<12?'早上好':h<18?'下午好':'晚上好'; },
+    today() { const d = new Date(); return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 星期${'日一二三四五六'[d.getDay()]}`; }
+  },
+  methods: {
+    open(t) {
+      if (t.closed) { _nav('checkin-closed'); return; }
+      this.ct = t; this.nameErr = false; this.f = { name:'小明', thought:'', photos:0 }; this.showCheckin = true;
+    },
+    submit() {
+      if (!this.f.name.trim()) { this.nameErr = true; this.showT('请先填写姓名'); return; }
+      this.showCheckin = false; this.showOk = true;
+      const i = this.pending.findIndex(t => t.id === this.ct.id);
+      if (i >= 0) { const t = this.pending.splice(i, 1)[0]; t.ct = new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}); this.done.unshift(t); }
+    },
+    showT(m) { this.toast = m; setTimeout(() => this.toast = '', 2000); }
+  }
+});
+</script>
+</body>
+</html>

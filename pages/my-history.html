@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>我的打卡记录</title>
+  <link rel="stylesheet" href="../assets/td.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body style="display:flex;flex-direction:column;height:100vh;overflow:hidden;background:var(--td-bg-page);">
+<div id="app" v-cloak style="display:flex;flex-direction:column;height:100%;">
+
+  <div class="td-navbar">
+    <div class="td-statusbar"></div>
+    <div class="td-navbar-content">
+      <div class="td-navbar-back" @click="_nav('profile')"><i class="fas fa-chevron-left"></i></div>
+      <span class="td-navbar-title">我的打卡记录</span>
+    </div>
+  </div>
+
+  <!-- 小统计 -->
+  <div style="background:var(--td-bg-card);padding:10px 16px;display:flex;gap:8px;border-bottom:1px solid var(--td-border);">
+    <div style="display:flex;align-items:center;gap:6px;background:var(--td-bg-page);border-radius:100px;padding:5px 12px;border:1px solid var(--td-border);">
+      <i class="fas fa-fire" style="font-size:12px;color:var(--td-text-2);"></i>
+      <span style="font-size:12px;font-weight:600;color:var(--td-text-1);">连续 12 天</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;background:var(--td-bg-page);border-radius:100px;padding:5px 12px;border:1px solid var(--td-border);">
+      <i class="fas fa-check-circle" style="font-size:12px;color:var(--td-text-2);"></i>
+      <span style="font-size:12px;font-weight:600;color:var(--td-text-1);">累计 47 次</span>
+    </div>
+  </div>
+
+  <div style="flex:1;overflow-y:auto;padding:12px 16px;" class="no-sb">
+
+    <!-- 空态 -->
+    <div v-if="isEmpty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:70px 24px;text-align:center;">
+      <i class="fas fa-clipboard-list" style="font-size:44px;color:#e0e0e0;margin-bottom:16px;"></i>
+      <div style="font-size:15px;font-weight:600;color:var(--td-text-2);margin-bottom:8px;">暂无打卡记录</div>
+      <div style="font-size:13px;color:var(--td-text-3);line-height:1.6;margin-bottom:20px;">你还没有完成过任何打卡<br>加入打卡项，开始你的习惯之旅吧</div>
+      <button class="td-btn td-btn-outline" style="height:38px;font-size:13px;" @click="_nav('home')">
+        <i class="fas fa-arrow-left" style="margin-right:6px;font-size:11px;"></i>返回今日打卡
+      </button>
+    </div>
+
+    <div v-for="grp in (isEmpty ? [] : groups)" :key="grp.date" style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:6px;padding:4px 0 10px;">
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--td-text-1);flex-shrink:0;"></div>
+        <span style="font-size:12px;font-weight:700;color:var(--td-text-2);">{{ grp.label }}</span>
+        <span style="font-size:11px;color:var(--td-text-3);">{{ grp.count }} 条</span>
+      </div>
+      <div v-for="rec in grp.items" :key="rec.id" class="td-card" style="margin-bottom:8px;">
+        <div style="padding:12px 14px;display:flex;align-items:flex-start;gap:10px;">
+          <div style="width:42px;height:42px;background:var(--td-bg-page);border-radius:var(--td-radius-l);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;border:1px solid var(--td-border);">{{ rec.icon }}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div>
+                <div style="font-size:13px;font-weight:600;color:var(--td-text-1);">{{ rec.name }}</div>
+                <div style="font-size:11px;color:var(--td-text-3);margin-top:3px;">{{ rec.proj }} · {{ rec.time }}</div>
+              </div>
+              <i class="fas fa-check-circle" style="color:var(--td-text-2);font-size:18px;flex-shrink:0;margin-top:2px;"></i>
+            </div>
+            <div v-if="rec.thought" style="margin-top:8px;background:var(--td-bg-page);border-radius:var(--td-radius-m);padding:7px 10px;font-size:12px;color:var(--td-text-2);line-height:1.5;border:1px solid var(--td-border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ rec.thought }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="../assets/js/vue.js"></script>
+<script>
+function _nav(p){if(window.parent!==window)window.parent.postMessage({navigate:p},'*');}
+new Vue({
+  el:'#app',
+  data:{
+    isEmpty: location.search.indexOf('empty=1') >= 0,
+    groups:[
+      {date:'2026-05-14',label:'今天 · 5月14日 周四',count:2,items:[
+        {id:1,icon:'💧',name:'每日喝水打卡',proj:'健康生活群',time:'09:32',thought:''},
+        {id:2,icon:'🧘',name:'冥想10分钟',proj:'正念打卡',time:'08:15',thought:'今天冥想很专注，思绪比平时清晰'},
+      ]},
+      {date:'2026-05-13',label:'昨天 · 5月13日 周三',count:3,items:[
+        {id:3,icon:'📚',name:'每日阅读30分钟',proj:'自律打卡群',time:'21:30',thought:'读了《黑天鹅》，关于不确定性的思考很有启发'},
+        {id:4,icon:'💧',name:'每日喝水打卡',proj:'健康生活群',time:'20:00',thought:''},
+        {id:5,icon:'🏃',name:'晨跑5公里',proj:'健身打卡营',time:'06:50',thought:'配速545，比昨天慢了一点'},
+      ]},
+      {date:'2026-05-12',label:'5月12日 周二',count:3,items:[
+        {id:6,icon:'📚',name:'每日阅读30分钟',proj:'自律打卡群',time:'22:00',thought:''},
+        {id:7,icon:'🏃',name:'晨跑5公里',proj:'健身打卡营',time:'07:00',thought:'早起跑步，状态很好！'},
+        {id:8,icon:'💪',name:'健身打卡',proj:'运动挑战营',time:'19:30',thought:'今天练了肩部，哑铃侧平举4组'},
+      ]},
+    ]
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>打卡项详情</title>
+  <link rel="stylesheet" href="../assets/td.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    .rank-1{background:#1a1a1a;color:#fff;}
+    .rank-2{background:#555;color:#fff;}
+    .rank-3{background:#999;color:#fff;}
+
+    /* 功能入口卡片 */
+    .entry-row {
+      background:var(--td-bg-card); padding:14px 16px;
+      display:flex; align-items:center; gap:12px;
+      border-bottom:1px solid var(--td-border); cursor:pointer;
+    }
+    .entry-row:active { background:var(--td-bg-page); }
+    .entry-icon {
+      width:38px; height:38px; border-radius:var(--td-radius-l);
+      background:var(--td-bg-page); border:1px solid var(--td-border);
+      display:flex; align-items:center; justify-content:center;
+      font-size:18px; flex-shrink:0;
+    }
+    .entry-info { flex:1; min-width:0; }
+    .entry-title { font-size:14px; font-weight:600; color:var(--td-text-1); }
+    .entry-desc { font-size:12px; color:var(--td-text-3); margin-top:2px; }
+
+    /* 今日动态预览头像格 */
+    .feed-avatars { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+    .feed-av { width:34px; height:34px; border-radius:50%; background:var(--td-bg-page); border:1px solid var(--td-border); display:flex; align-items:center; justify-content:center; font-size:17px; }
+
+    /* ── 打卡状态格栅 ── */
+    .status-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:5px; padding:12px 16px; }
+    .status-cell {
+      border-radius:6px; padding:6px 4px; text-align:center;
+      font-size:10px; line-height:1.35; cursor:pointer;
+      position:relative; border:1.5px solid var(--td-border);
+      background:var(--td-bg-page); color:var(--td-text-2);
+      min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    }
+    .status-cell.done {
+      border-color:#1a1a1a; background:#fff;
+      color:var(--td-text-1);
+    }
+    .status-cell.done::after {
+      content:'✓'; position:absolute; top:2px; right:3px;
+      font-size:9px; font-weight:700; color:#1a1a1a;
+    }
+    .status-cell .sn { font-size:9px; color:var(--td-text-4); margin-bottom:1px; }
+    .filter-tab { flex:1; padding:8px 0; text-align:center; font-size:13px; font-weight:500; cursor:pointer; color:var(--td-text-3); border-bottom:2px solid transparent; transition:all .15s; }
+    .filter-tab.active { color:var(--td-text-1); border-bottom-color:var(--td-text-1); font-weight:600; }
+    .date-nav { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; background:var(--td-bg-card); border-bottom:1px solid var(--td-border); }
+    .date-nav-btn { width:32px; height:32px; border-radius:50%; border:1px solid var(--td-border); background:var(--td-bg-page); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; color:var(--td-text-2); }
+
+    /* ── 统计视图 ── */
+    .stats-row { display:flex; align-items:center; padding:10px 16px; border-bottom:1px solid var(--td-border); gap:10px; }
+    .stats-row:nth-child(even) { background:#fafafa; }
+    .stats-bar-wrap { flex:1; height:6px; background:var(--td-border); border-radius:3px; overflow:hidden; }
+    .stats-bar { height:100%; background:var(--td-text-1); border-radius:3px; transition:width .3s; }
+  </style>
+</head>
+<body style="display:flex;flex-direction:column;height:100vh;overflow:hidden;">
+<div id="app" v-cloak style="display:flex;flex-direction:column;height:100%;background:var(--td-bg-page);">
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- VIEW: main                            -->
+  <!-- ══════════════════════════════════════ -->
+  <template v-if="view==='main'">
+
+    <!-- 封面图区域（相对定位，NavBar 悬浮叠加） -->
+    <div style="position:relative;flex-shrink:0;">
+      <!-- 封面图：渐变 + 底部渐变遮罩 -->
+      <div style="height:220px;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 55%,#0f3460 100%);position:relative;overflow:hidden;">
+        <!-- 底部遮罩，使文字更清晰 -->
+        <div style="position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(to top,rgba(0,0,0,0.55) 0%,transparent 100%);"></div>
+        <!-- 项目名称（覆盖在封面上） -->
+        <div style="position:absolute;bottom:38px;left:16px;right:16px;">
+          <h1 style="font-size:19px;font-weight:700;color:#fff;line-height:1.35;text-shadow:0 1px 6px rgba(0,0,0,0.4);margin:0;">每日阅读30分钟</h1>
+        </div>
+        <!-- 止观实验室 Logo + 状态标签 -->
+        <div style="position:absolute;bottom:12px;left:16px;right:16px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div style="width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,0.9);display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:8px;font-weight:900;color:#222;">止</span>
+            </div>
+            <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.8);">止观实验室</span>
+          </div>
+          <span v-if="status==='pending'"
+            style="background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.9);font-size:10px;font-weight:600;padding:2px 9px;border-radius:100px;border:1px solid rgba(255,255,255,0.3);">⏳ 待开始</span>
+          <span v-else
+            style="background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.9);font-size:10px;font-weight:600;padding:2px 9px;border-radius:100px;border:1px solid rgba(255,255,255,0.3);">🔥 进行中</span>
+        </div>
+      </div>
+      <!-- NavBar 浮层 -->
+      <div style="position:absolute;top:0;left:0;right:0;">
+        <div style="height:20px;"></div>
+        <div style="height:44px;display:flex;align-items:center;padding:0 16px;">
+          <div @click="_nav('checkin-list')" style="color:#fff;cursor:pointer;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
+            <i class="fas fa-chevron-left" style="font-size:14px;"></i>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px;">
+            <div @click="showT('调起微信分享...')" style="color:#fff;cursor:pointer;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
+              <i class="fas fa-share-nodes" style="font-size:14px;"></i>
+            </div>
+            <div @click="showT('更多操作...')" style="color:#fff;cursor:pointer;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
+              <i class="fas fa-ellipsis" style="font-size:14px;"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 可滚动内容区 -->
+    <div style="flex:1;overflow-y:auto;background:var(--td-bg-page);" class="no-sb">
+
+      <!-- ① 描述 + 打卡规则（进行中时默认折叠） -->
+      <div style="background:var(--td-bg-card);">
+        <!-- 折叠时显示摘要行 -->
+        <div v-if="status==='started' && !showDetail"
+          @click="showDetail=true"
+          style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;cursor:pointer;">
+          <span style="font-size:13px;color:var(--td-text-3);">打卡日期  2026-05-14 ~ 2026-06-13 · 每天</span>
+          <i class="fas fa-chevron-down" style="font-size:11px;color:var(--td-text-4);margin-left:8px;"></i>
+        </div>
+
+        <!-- 展开内容 -->
+        <template v-if="status==='pending' || showDetail">
+          <div style="padding:14px 16px 12px;border-bottom:1px solid var(--td-border);">
+            <p style="font-size:14px;color:var(--td-text-2);line-height:1.75;margin:0;">
+              每天完成30分钟专注阅读，并在打卡时记录心得感想。坚持阅读，持续成长，让读书成为每日最重要的一件事。
+            </p>
+          </div>
+          <div style="padding:12px 16px 14px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+              <span style="font-size:13px;font-weight:600;color:var(--td-text-1);">打卡规则</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;gap:10px;font-size:13px;">
+                <span style="color:var(--td-text-3);flex-shrink:0;width:52px;">打卡日期</span>
+                <span style="color:var(--td-text-1);">2026-05-14 00:00 至 2026-06-13 23:59</span>
+              </div>
+              <div style="display:flex;gap:10px;font-size:13px;">
+                <span style="color:var(--td-text-3);flex-shrink:0;width:52px;">打卡频率</span>
+                <span style="color:var(--td-text-1);">每天</span>
+              </div>
+              <div style="display:flex;gap:10px;font-size:13px;">
+                <span style="color:var(--td-text-3);flex-shrink:0;width:52px;">打卡时间</span>
+                <span style="color:var(--td-text-1);">00:00 ~ 23:59</span>
+              </div>
+              <div style="display:flex;gap:10px;font-size:13px;">
+                <span style="color:var(--td-text-3);flex-shrink:0;width:52px;">参与模式</span>
+                <span style="color:var(--td-text-1);">封闭模式 · 28 人</span>
+              </div>
+            </div>
+            <!-- 进行中状态下的收起按钮 -->
+            <div v-if="status==='started'" @click="showDetail=false"
+              style="display:flex;align-items:center;justify-content:center;gap:4px;margin-top:12px;cursor:pointer;padding:4px 0;">
+              <span style="font-size:12px;color:var(--td-text-3);">收起</span>
+              <i class="fas fa-chevron-up" style="font-size:10px;color:var(--td-text-4);"></i>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- ③ 已开始：统计数字 -->
+      <template v-if="status==='started'">
+
+        <!-- 数据概览 -->
+        <div style="background:var(--td-bg-card);margin-top:8px;padding:14px 16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <span style="font-size:14px;font-weight:600;color:var(--td-text-1);">今日概览</span>
+            <span style="font-size:12px;color:var(--td-text-3);">第 12 / 31 天</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+            <div v-for="s in summaryStats" :key="s.l" style="background:var(--td-bg-page);border-radius:var(--td-radius-m);padding:10px 6px;text-align:center;border:1px solid var(--td-border);">
+              <div style="font-size:18px;font-weight:800;color:var(--td-text-1);">{{ s.v }}</div>
+              <div style="font-size:10px;color:var(--td-text-3);margin-top:3px;">{{ s.l }}</div>
+            </div>
+          </div>
+          <!-- 进度条 -->
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="td-progress-wrap" style="flex:1;">
+              <div class="td-progress-fill" style="width:68%;"></div>
+            </div>
+            <span style="font-size:12px;color:var(--td-text-2);white-space:nowrap;">68% 完成</span>
+          </div>
+          <!-- 催一催 -->
+          <div style="margin-top:10px;background:var(--td-bg-page);border-radius:var(--td-radius-m);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;border:1px solid var(--td-border);">
+            <span style="font-size:12px;color:var(--td-text-2);">今日 9 人未打卡：小红、小蓝...</span>
+            <button @click="showUrge=true" style="font-size:12px;font-weight:700;color:var(--td-text-1);background:none;border:none;cursor:pointer;white-space:nowrap;padding-left:8px;">催一催 →</button>
+          </div>
+        </div>
+
+        <!-- 排行榜 -->
+        <div class="td-card" style="margin:8px 0;border-radius:0;box-shadow:none;border-top:1px solid var(--td-border);border-bottom:1px solid var(--td-border);">
+          <div class="td-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>打卡排行榜</span>
+            <div class="td-segment" style="min-width:120px;">
+              <div v-for="s in sorts" :key="s.k" class="td-segment-item" :class="sort===s.k?'active':''" @click="sort=s.k">{{ s.l }}</div>
+            </div>
+          </div>
+          <div>
+            <div v-for="(m,i) in ranks" :key="m.name" style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--td-border);">
+              <div :class="['',i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'']"
+                style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;"
+                :style="i>=3?'background:var(--td-bg-page);color:var(--td-text-3);border:1px solid var(--td-border);':''">{{ i+1 }}</div>
+              <div style="width:34px;height:34px;border-radius:50%;background:var(--td-bg-page);border:1px solid var(--td-border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">{{ m.av }}</div>
+              <div style="flex:1;">
+                <span style="font-size:13px;font-weight:500;color:var(--td-text-1);">{{ m.name }}</span>
+                <span v-if="m.me" style="font-size:11px;color:var(--td-text-2);margin-left:4px;">（我）</span>
+              </div>
+              <div style="font-size:13px;font-weight:700;color:var(--td-text-1);">{{ m.days }}天</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 四个功能入口 -->
+        <div style="background:var(--td-bg-card);margin-top:8px;overflow:hidden;">
+          <div class="entry-row" @click="_nav('checkin-feed')">
+            <div class="entry-icon">📝</div>
+            <div class="entry-info">
+              <div class="entry-title">今日打卡动态</div>
+              <div class="entry-desc">{{ todayFeeds.length }} 人已打卡，点击查看详情</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color:var(--td-text-4);font-size:12px;"></i>
+          </div>
+          <div class="entry-row" @click="view='status'">
+            <div class="entry-icon">📋</div>
+            <div class="entry-info">
+              <div class="entry-title">打卡状态</div>
+              <div class="entry-desc">查看全部成员的每日打卡情况</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color:var(--td-text-4);font-size:12px;"></i>
+          </div>
+          <div class="entry-row" @click="view='statsview'">
+            <div class="entry-icon">📊</div>
+            <div class="entry-info">
+              <div class="entry-title">打卡统计</div>
+              <div class="entry-desc">按日期统计每人打卡与缺卡次数</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color:var(--td-text-4);font-size:12px;"></i>
+          </div>
+          <div class="entry-row" @click="view='members'">
+            <div class="entry-icon">👥</div>
+            <div class="entry-info">
+              <div class="entry-title">人员管理</div>
+              <div class="entry-desc">查看全部成员，发起人可移除成员</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color:var(--td-text-4);font-size:12px;"></i>
+          </div>
+        </div>
+
+      </template>
+
+      <!-- ③ 未开始：待开始提示 -->
+      <template v-else>
+        <div style="background:var(--td-bg-card);margin-top:8px;padding:28px 16px;text-align:center;">
+          <div style="font-size:36px;margin-bottom:12px;">⏳</div>
+          <div style="font-size:15px;font-weight:600;color:var(--td-text-1);margin-bottom:6px;">打卡项尚未开始</div>
+          <div style="font-size:13px;color:var(--td-text-3);line-height:1.6;">预计于 2026-05-20 00:00 开始<br>统计数据将在开始后显示</div>
+        </div>
+        <!-- 人员管理（未开始时也可用） -->
+        <div style="background:var(--td-bg-card);margin-top:8px;overflow:hidden;">
+          <div class="entry-row" @click="view='members'">
+            <div class="entry-icon">👥</div>
+            <div class="entry-info">
+              <div class="entry-title">人员管理</div>
+              <div class="entry-desc">查看已加入的 {{ members.length }} 名成员</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color:var(--td-text-4);font-size:12px;"></i>
+          </div>
+        </div>
+      </template>
+
+      <div style="height:8px;"></div>
+    </div>
+
+    <!-- 底部操作栏 -->
+    <div style="background:var(--td-bg-card);padding:10px 16px 14px;border-top:1px solid var(--td-border);flex-shrink:0;">
+      <!-- 未加入 -->
+      <button v-if="!joined" class="td-btn td-btn-primary td-btn-block" style="height:48px;font-size:16px;" @click="joined=true;showT('加入成功！')">
+        加入打卡
+      </button>
+      <!-- 已加入，进行中，未打卡 -->
+      <button v-else-if="status==='started'" class="td-btn td-btn-primary td-btn-block" style="height:48px;font-size:16px;" @click="_nav('home')">
+        立即打卡
+      </button>
+      <!-- 已加入，待开始 -->
+      <button v-else class="td-btn td-btn-block" style="height:48px;font-size:15px;background:var(--td-bg-page);color:var(--td-text-3);border:1px solid var(--td-border);cursor:default;">
+        已加入 · 等待开始
+      </button>
+    </div>
+
+    <!-- 催打卡弹层 -->
+    <div v-if="showUrge" class="td-overlay" @click="showUrge=false"></div>
+    <div v-if="showUrge" class="td-sheet">
+      <div class="td-sheet-handle"></div>
+      <div class="td-sheet-header">
+        <span class="td-sheet-title">发送打卡提醒</span>
+        <div @click="showUrge=false" style="color:var(--td-text-3);cursor:pointer;"><i class="fas fa-times"></i></div>
+      </div>
+      <div class="td-sheet-body">
+        <p style="font-size:12px;color:var(--td-text-2);">催促未打卡的成员完成今日打卡</p>
+        <div style="background:var(--td-bg-page);border-radius:8px;padding:10px 12px;border:1px solid var(--td-border);">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--td-text-2);margin-bottom:6px;">
+            <span>今日进度</span><span style="font-weight:700;color:var(--td-text-1);">19/28 人</span>
+          </div>
+          <div class="td-progress-wrap"><div class="td-progress-fill" style="width:68%;"></div></div>
+        </div>
+        <div>
+          <p style="font-size:12px;font-weight:600;color:var(--td-text-2);margin-bottom:6px;">未打卡成员（9人）</p>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            <span v-for="m in undone" :key="m" style="background:var(--td-bg-page);color:var(--td-text-2);font-size:12px;padding:4px 10px;border-radius:100px;border:1px solid var(--td-border);">{{ m }}</span>
+          </div>
+        </div>
+        <button class="td-btn td-btn-outline td-btn-block" @click="copyUrge">复制提醒文字</button>
+        <button class="td-btn td-btn-primary td-btn-block" @click="showT('调起微信群分享...'); showUrge=false;">发到微信群</button>
+      </div>
+    </div>
+
+  </template>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- VIEW: status（打卡状态格栅）           -->
+  <!-- ══════════════════════════════════════ -->
+  <template v-if="view==='status'">
+
+    <!-- NavBar -->
+    <div class="td-navbar">
+      <div class="td-statusbar"></div>
+      <div class="td-navbar-content">
+        <div class="td-navbar-back" @click="view='main'"><i class="fas fa-chevron-left"></i></div>
+        <span class="td-navbar-title">打卡状态</span>
+      </div>
+    </div>
+
+    <!-- 日期切换 -->
+    <div class="date-nav">
+      <div class="date-nav-btn" @click="prevDay"><i class="fas fa-chevron-left"></i></div>
+      <div style="text-align:center;">
+        <div style="font-size:15px;font-weight:700;color:var(--td-text-1);">{{ statusDate }}</div>
+        <div style="font-size:11px;color:var(--td-text-3);margin-top:1px;">{{ doneCount }}/{{ members.length }} 人已打卡</div>
+      </div>
+      <div class="date-nav-btn" @click="nextDay"><i class="fas fa-chevron-right"></i></div>
+    </div>
+
+    <!-- 筛选 Tab -->
+    <div style="background:var(--td-bg-card);display:flex;border-bottom:1px solid var(--td-border);">
+      <div v-for="f in filters" :key="f.k" class="filter-tab" :class="statusFilter===f.k?'active':''" @click="statusFilter=f.k">
+        {{ f.l }}
+      </div>
+    </div>
+
+    <!-- 格栅 -->
+    <div style="flex:1;overflow-y:auto;" class="no-sb">
+      <div class="status-grid">
+        <div v-for="m in filteredMembers" :key="m.id"
+          class="status-cell" :class="m.done?'done':''">
+          <div class="sn">{{ m.id }}</div>
+          <div>{{ m.name }}</div>
+        </div>
+      </div>
+    </div>
+
+  </template>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- VIEW: statsview（打卡统计）            -->
+  <!-- ══════════════════════════════════════ -->
+  <template v-if="view==='statsview'">
+
+    <!-- NavBar -->
+    <div class="td-navbar">
+      <div class="td-statusbar"></div>
+      <div class="td-navbar-content">
+        <div class="td-navbar-back" @click="view='main'"><i class="fas fa-chevron-left"></i></div>
+        <span class="td-navbar-title">打卡统计</span>
+      </div>
+    </div>
+
+    <!-- 日期范围 -->
+    <div style="background:var(--td-bg-card);padding:12px 16px;border-bottom:1px solid var(--td-border);display:flex;gap:10px;align-items:center;">
+      <div style="flex:1;">
+        <div class="td-input-label" style="margin-bottom:4px;">开始日期</div>
+        <input type="date" v-model="statsStart" class="td-input" style="font-size:13px;" />
+      </div>
+      <div style="color:var(--td-text-3);font-size:12px;margin-top:14px;">—</div>
+      <div style="flex:1;">
+        <div class="td-input-label" style="margin-bottom:4px;">结束日期</div>
+        <input type="date" v-model="statsEnd" class="td-input" style="font-size:13px;" />
+      </div>
+    </div>
+
+    <!-- 汇总行 -->
+    <div style="background:var(--td-bg-page);padding:8px 16px;display:flex;gap:6px;border-bottom:1px solid var(--td-border);">
+      <span style="font-size:11px;color:var(--td-text-3);">统计周期 {{ statsDays }} 天 · {{ members.length }} 人参与</span>
+    </div>
+
+    <!-- 表头 -->
+    <div style="background:var(--td-bg-page);display:flex;padding:6px 16px;border-bottom:1px solid var(--td-border);">
+      <div style="flex:3;font-size:11px;font-weight:600;color:var(--td-text-3);">成员</div>
+      <div style="flex:1;text-align:center;font-size:11px;font-weight:600;color:var(--td-text-3);">打卡</div>
+      <div style="flex:1;text-align:center;font-size:11px;font-weight:600;color:var(--td-text-3);">缺卡</div>
+      <div style="flex:2;text-align:center;font-size:11px;font-weight:600;color:var(--td-text-3);">完成率</div>
+    </div>
+
+    <!-- 统计列表 -->
+    <div style="flex:1;overflow-y:auto;" class="no-sb">
+      <div v-for="(m,i) in statsData" :key="m.id" class="stats-row">
+        <div style="flex:3;display:flex;align-items:center;gap:6px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--td-bg-page);border:1px solid var(--td-border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">{{ m.av }}</div>
+          <div>
+            <div style="font-size:13px;font-weight:500;color:var(--td-text-1);">{{ m.name }}</div>
+          </div>
+        </div>
+        <div style="flex:1;text-align:center;font-size:13px;font-weight:700;color:var(--td-text-1);">{{ m.checkins }}</div>
+        <div style="flex:1;text-align:center;font-size:13px;color:var(--td-text-3);">{{ statsDays - m.checkins }}</div>
+        <div style="flex:2;display:flex;align-items:center;gap:6px;padding-right:4px;">
+          <div class="stats-bar-wrap">
+            <div class="stats-bar" :style="'width:'+Math.round(m.checkins/statsDays*100)+'%;'"></div>
+          </div>
+          <span style="font-size:11px;color:var(--td-text-2);min-width:28px;text-align:right;">{{ Math.round(m.checkins/statsDays*100) }}%</span>
+        </div>
+      </div>
+    </div>
+
+  </template>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- VIEW: members（人员管理）              -->
+  <!-- ══════════════════════════════════════ -->
+  <template v-if="view==='members'">
+
+    <!-- NavBar -->
+    <div class="td-navbar">
+      <div class="td-statusbar"></div>
+      <div class="td-navbar-content">
+        <div class="td-navbar-back" @click="view='main'"><i class="fas fa-chevron-left"></i></div>
+        <span class="td-navbar-title">人员管理</span>
+      </div>
+    </div>
+
+    <!-- 搜索栏 -->
+    <div style="padding:10px 16px;background:var(--td-bg-card);border-bottom:1px solid var(--td-border);">
+      <input v-model="memberSearch" class="td-input" style="font-size:14px;"
+        placeholder="搜索姓名…" />
+    </div>
+
+    <!-- 汇总行 -->
+    <div style="padding:8px 16px;background:var(--td-bg-page);border-bottom:1px solid var(--td-border);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:12px;color:var(--td-text-3);">共 {{ managedMembers.length }} 名成员 · {{ managedMembers.filter(m=>m.done).length }} 人今日已打卡</span>
+      <span style="font-size:12px;color:var(--td-text-3);">发起人可移除成员</span>
+    </div>
+
+    <!-- 成员列表 -->
+    <div style="flex:1;overflow-y:auto;" class="no-sb">
+      <div v-for="m in filteredManagedMembers" :key="m.id">
+
+        <!-- 正常态 -->
+        <div v-if="deleteConfirmId !== m.id"
+          style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--td-bg-card);border-bottom:1px solid var(--td-border);">
+          <!-- 头像 -->
+          <div style="width:38px;height:38px;border-radius:50%;background:var(--td-bg-page);border:1px solid var(--td-border);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">{{ m.av }}</div>
+          <!-- 姓名 + 编号 -->
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:500;color:var(--td-text-1);">{{ m.name }}</div>
+            <div style="font-size:11px;color:var(--td-text-3);margin-top:1px;">编号 {{ m.id }} · {{ m.done ? '今日已打卡 ✓' : '今日未打卡' }}</div>
+          </div>
+          <!-- 删除按钮 -->
+          <button @click="deleteConfirmId=m.id"
+            style="width:32px;height:32px;border:1px solid var(--td-border);border-radius:50%;background:var(--td-bg-page);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">
+            <i class="fas fa-trash-can" style="font-size:12px;color:var(--td-text-3);"></i>
+          </button>
+        </div>
+
+        <!-- 确认删除态 -->
+        <div v-else
+          style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#fafafa;border-bottom:1px solid var(--td-border);border-left:3px solid var(--td-text-1);">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--td-text-1);">确认移除「{{ m.name }}」？</div>
+            <div style="font-size:11px;color:var(--td-text-3);margin-top:2px;">移除后该成员将无法继续参与此打卡项</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <button @click="deleteConfirmId=null"
+              style="height:32px;padding:0 12px;border:1px solid var(--td-border);border-radius:var(--td-radius-m);background:var(--td-bg-card);font-size:12px;color:var(--td-text-2);cursor:pointer;">取消</button>
+            <button @click="removeMember(m.id)"
+              style="height:32px;padding:0 12px;border:none;border-radius:var(--td-radius-m);background:var(--td-text-1);font-size:12px;color:#fff;cursor:pointer;">确认移除</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 列表为空 -->
+      <div v-if="filteredManagedMembers.length===0" style="padding:48px 16px;text-align:center;">
+        <i class="fas fa-magnifying-glass" style="font-size:32px;color:var(--td-text-4);margin-bottom:12px;display:block;"></i>
+        <div style="font-size:14px;color:var(--td-text-3);">未找到匹配成员</div>
+      </div>
+
+      <div style="height:8px;"></div>
+    </div>
+
+  </template>
+
+  <div v-if="toast" class="td-toast">{{ toast }}</div>
+</div>
+<script src="../assets/js/vue.js"></script>
+<script>
+function _nav(p) { if (window.parent !== window) window.parent.postMessage({ navigate: p }, '*'); }
+
+var MEMBERS = [
+  {id:1,name:'鲍容容',av:'🌸',done:true},{id:2,name:'季和',av:'😊',done:true},
+  {id:3,name:'张建华',av:'🦁',done:false},{id:4,name:'李晓平',av:'🐼',done:false},
+  {id:5,name:'吕文眉',av:'🦊',done:false},{id:6,name:'何赵英',av:'🌺',done:true},
+  {id:7,name:'郑向青',av:'🐯',done:true},{id:8,name:'郑碧霄',av:'🐸',done:false},
+  {id:9,name:'徐海飞',av:'🐱',done:false},{id:10,name:'陈乐鸥',av:'🐶',done:false},
+  {id:11,name:'刘香莲',av:'🐂',done:true},{id:12,name:'叶朝勇',av:'🐰',done:false},
+  {id:13,name:'王雪平',av:'🌸',done:true},{id:14,name:'谢杰妹',av:'😊',done:false},
+  {id:15,name:'陈育容',av:'🦁',done:true},{id:16,name:'何文新',av:'🐼',done:true},
+  {id:17,name:'黄晓光',av:'🦊',done:true},{id:18,name:'张纤',av:'🌺',done:false},
+  {id:19,name:'蔡小琴',av:'🐯',done:false},{id:20,name:'刘巧武',av:'🐸',done:true},
+  {id:21,name:'方敏',av:'🐱',done:true},{id:22,name:'魏英',av:'🐶',done:false},
+  {id:23,name:'薛杨',av:'🐂',done:false},{id:24,name:'闫春刚',av:'🐰',done:true},
+  {id:25,name:'孙凤梅',av:'🌸',done:true},{id:26,name:'方燕',av:'😊',done:true},
+  {id:27,name:'高娟英',av:'🦁',done:false},{id:28,name:'陈艳',av:'🐼',done:false},
+];
+
+new Vue({
+  el: '#app',
+  data: {
+    view: (function() {
+      var m = location.search.match(/[?&]view=([^&]*)/);
+      return m ? m[1] : 'main';
+    })(),
+    status: (function() {
+      return location.search.indexOf('status=pending') >= 0 ? 'pending' : 'started';
+    })(),
+    joined: (function() {
+      return location.search.indexOf('joined=0') < 0;
+    })(),
+    showDetail: false,
+    toast: '',
+    showUrge: false,
+    sort: 'streak',
+    sorts: [{k:'streak',l:'连续'},{k:'total',l:'累计'},{k:'active',l:'活跃'}],
+    summaryStats: [{v:'28',l:'成员'},{v:'19',l:'已打卡'},{v:'68%',l:'完成率'},{v:'9',l:'剩余天'}],
+    ranks: [
+      {name:'小花',av:'🌸',days:12,me:false},
+      {name:'小明',av:'😊',days:12,me:true},
+      {name:'阿杰',av:'🦁',days:11,me:false},
+      {name:'小红',av:'🌺',days:10,me:false},
+      {name:'大牛',av:'🐂',days:9,me:false},
+    ],
+    todayFeeds: [
+      {av:'🌸',name:'小花',thought:'读了《原则》第五章'},
+      {av:'🦁',name:'阿杰',thought:''},
+      {av:'😊',name:'小明',thought:''},
+      {av:'🌺',name:'小红',thought:''},
+      {av:'🐂',name:'大牛',thought:''},
+      {av:'🐯',name:'阿虎',thought:''},
+    ],
+    undone: ['小红','小蓝','阿明','花花','小龙','阿美','小强','晓晓','阿文'],
+    // 打卡状态视图
+    statusFilter: 'all',
+    statusDayOffset: 0,
+    members: MEMBERS,
+    filters: [{k:'all',l:'全部'},{k:'done',l:'已打卡'},{k:'undone',l:'未打卡'}],
+    // 统计视图
+    statsStart: '2026-05-01',
+    statsEnd: '2026-05-14',
+    // 人员管理视图
+    memberSearch: '',
+    deleteConfirmId: null,
+  },
+  computed: {
+    statusDate: function() {
+      var d = new Date();
+      d.setDate(d.getDate() + this.statusDayOffset);
+      var m = d.getMonth()+1;
+      var day = d.getDate();
+      return d.getFullYear() + '年' + m + '月' + day + '日';
+    },
+    doneCount: function() {
+      return this.members.filter(function(m){ return m.done; }).length;
+    },
+    filteredMembers: function() {
+      var f = this.statusFilter;
+      if (f === 'done') return this.members.filter(function(m){ return m.done; });
+      if (f === 'undone') return this.members.filter(function(m){ return !m.done; });
+      return this.members;
+    },
+    statsDays: function() {
+      if (!this.statsStart || !this.statsEnd) return 14;
+      var diff = new Date(this.statsEnd) - new Date(this.statsStart);
+      return diff > 0 ? Math.ceil(diff / 86400000) + 1 : 1;
+    },
+    statsData: function() {
+      var days = this.statsDays;
+      return this.members.map(function(m, i) {
+        var checkins = Math.round(days * (0.5 + (i % 5) * 0.1));
+        if (checkins > days) checkins = days;
+        return { id: m.id, name: m.name, av: m.av, checkins: checkins };
+      });
+    },
+    managedMembers: function() {
+      return this.members;
+    },
+    filteredManagedMembers: function() {
+      var q = this.memberSearch.trim();
+      if (!q) return this.managedMembers;
+      return this.managedMembers.filter(function(m){ return m.name.includes(q); });
+    }
+  },
+  methods: {
+    prevDay: function() { this.statusDayOffset--; },
+    nextDay: function() { if (this.statusDayOffset < 0) this.statusDayOffset++; },
+    removeMember: function(id) {
+      var m = this.members.find(function(m){ return m.id === id; });
+      this.members = this.members.filter(function(m){ return m.id !== id; });
+      this.deleteConfirmId = null;
+      this.showT('已移除成员：' + (m ? m.name : ''));
+    },
+    copyUrge: function() {
+      this.showT('已复制到剪贴板');
+      this.showUrge = false;
+    },
+    showT: function(m) {
+      this.toast = m;
+      var self = this;
+      setTimeout(function(){ self.toast = ''; }, 2000);
+    }
+  }
+});
+</script>
+</body>
+</html>

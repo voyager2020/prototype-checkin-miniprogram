@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>封闭模式 · 确认打卡</title>
+  <link rel="stylesheet" href="../assets/td.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    .photo-slot { width:72px; height:72px; border:1.5px dashed var(--td-border); border-radius:var(--td-radius-m); display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; background:var(--td-bg-page); }
+    .photo-slot.filled { border-color:var(--td-text-1); background:var(--td-bg-hover); }
+
+    /* 姓名选择器 */
+    .name-picker-row {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:12px 0; cursor:pointer; border-radius:var(--td-radius-m);
+      transition:background .1s;
+    }
+    .name-picker-row:active { background:var(--td-bg-hover); }
+    .name-picker-val { font-size:15px; color:var(--td-text-1); font-weight:500; }
+    .name-picker-placeholder { font-size:15px; color:var(--td-text-4); }
+
+    /* 底部选名弹层 */
+    .name-sheet {
+      position:fixed; left:0; right:0; bottom:0; z-index:60;
+      background:var(--td-bg-card);
+      border-radius:var(--td-radius-l) var(--td-radius-l) 0 0;
+      max-height:70vh; display:flex; flex-direction:column;
+      transform:translateY(0);
+    }
+    .name-sheet-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 16px 10px; border-bottom:1px solid var(--td-border);
+      flex-shrink:0;
+    }
+    .name-sheet-title { font-size:15px; font-weight:700; color:var(--td-text-1); }
+    .name-sheet-cancel { font-size:13px; color:var(--td-text-3); cursor:pointer; padding:4px 0; }
+    .name-sheet-search {
+      padding:10px 16px; flex-shrink:0; border-bottom:1px solid var(--td-border);
+    }
+    .name-sheet-search input {
+      width:100%; height:36px; background:var(--td-bg-page); border:1px solid var(--td-border);
+      border-radius:var(--td-radius-m); padding:0 12px; font-size:14px; color:var(--td-text-1);
+      outline:none;
+    }
+    .name-sheet-search input:focus { border-color:var(--td-text-1); }
+    .name-list { overflow-y:auto; flex:1; }
+    .name-item {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 16px; border-bottom:1px solid var(--td-border); cursor:pointer;
+      transition:background .1s;
+    }
+    .name-item:last-child { border-bottom:none; }
+    .name-item:active { background:var(--td-bg-hover); }
+    .name-item.selected { background:var(--td-bg-hover); }
+    .name-item-text { font-size:15px; color:var(--td-text-1); }
+    .name-item.selected .name-item-text { font-weight:600; }
+    .name-item-check { color:var(--td-text-1); font-size:15px; }
+    .name-item-empty { padding:28px 16px; text-align:center; color:var(--td-text-4); font-size:13px; }
+
+    /* 封闭模式标签 */
+    .closed-badge {
+      display:inline-flex; align-items:center; gap:4px;
+      padding:2px 8px; border-radius:100px; font-size:11px; font-weight:600;
+      background:var(--td-bg-hover); color:var(--td-text-2);
+      border:1px solid var(--td-border);
+    }
+  </style>
+</head>
+<body style="display:flex;flex-direction:column;height:100vh;overflow:hidden;">
+<div id="app" v-cloak style="display:flex;flex-direction:column;height:100%;background:var(--td-bg-page);">
+
+  <!-- NavBar -->
+  <div class="td-navbar">
+    <div class="td-statusbar"></div>
+    <div class="td-navbar-content">
+      <div class="td-navbar-back" @click="_nav('home')"><i class="fas fa-chevron-left"></i></div>
+      <span class="td-navbar-title">确认打卡</span>
+    </div>
+  </div>
+
+  <!-- 打卡项信息条 -->
+  <div style="background:var(--td-bg-card);padding:12px 16px;border-bottom:1px solid var(--td-border);display:flex;align-items:center;gap:10px;">
+    <span style="font-size:28px;">🧘</span>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:14px;font-weight:600;color:var(--td-text-1);">21天正念冥想营</div>
+      <div style="font-size:12px;color:var(--td-text-3);margin-top:2px;display:flex;align-items:center;gap:6px;">
+        <span>全天 · 正念打卡群</span>
+        <span class="closed-badge"><i class="fas fa-lock" style="font-size:9px;"></i>封闭模式</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 表单内容（可滚动） -->
+  <div style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px;" class="no-sb">
+
+    <!-- 姓名选择（核心区别：从固定名单选择） -->
+    <div style="background:var(--td-bg-card);border-radius:var(--td-radius-l);padding:14px;box-shadow:var(--td-shadow-1);">
+      <div class="td-input-label" style="margin-bottom:4px;">
+        姓名 <span class="required">*</span>
+        <span style="font-size:11px;color:var(--td-text-3);font-weight:400;margin-left:6px;">从成员名单中选择</span>
+      </div>
+      <div class="name-picker-row" @click="openSheet" :class="nameErr?'error-row':''">
+        <span v-if="f.name" class="name-picker-val">{{ f.name }}</span>
+        <span v-else class="name-picker-placeholder">请选择你的姓名</span>
+        <i class="fas fa-chevron-right" style="font-size:13px;color:var(--td-text-4);"></i>
+      </div>
+      <div style="height:1px;background:var(--td-border);margin:0 -2px;"></div>
+      <p v-if="nameErr" style="font-size:12px;color:var(--td-text-1);margin-top:8px;font-weight:500;">
+        <i class="fas fa-exclamation-circle" style="margin-right:4px;"></i>请先选择姓名
+      </p>
+    </div>
+
+    <!-- 今日感想 -->
+    <div style="background:var(--td-bg-card);border-radius:var(--td-radius-l);padding:14px;box-shadow:var(--td-shadow-1);">
+      <div class="td-input-label" style="margin-bottom:8px;">打卡内容或感想 <span style="color:var(--td-text-3);font-weight:400;">（选填）</span></div>
+      <textarea v-model="f.thought" class="td-textarea" rows="5" maxlength="200" placeholder="分享今天打卡的心得和感想..."></textarea>
+      <div class="td-char-count">{{ f.thought.length }}/200</div>
+    </div>
+
+    <!-- 打卡照片 -->
+    <div style="background:var(--td-bg-card);border-radius:var(--td-radius-l);padding:14px;box-shadow:var(--td-shadow-1);">
+      <div class="td-input-label" style="margin-bottom:10px;">打卡照片 <span style="color:var(--td-text-3);font-weight:400;">（选填，最多3张）</span></div>
+      <div style="display:flex;gap:10px;">
+        <div v-for="i in 3" :key="i" class="photo-slot" :class="f.photos>=i?'filled':''"
+          @click="f.photos<i&&(f.photos=i)">
+          <i class="fas fa-check" v-if="f.photos>=i" style="font-size:20px;color:var(--td-text-1);"></i>
+          <template v-else>
+            <i class="fas fa-camera" style="font-size:20px;color:var(--td-text-4);"></i>
+            <span style="font-size:11px;color:var(--td-text-3);margin-top:5px;">添加</span>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:4px;"></div>
+  </div>
+
+  <!-- 底部固定：确认按钮 -->
+  <div style="background:var(--td-bg-card);padding:12px 16px 16px;border-top:1px solid var(--td-border);flex-shrink:0;">
+    <button class="td-btn td-btn-primary td-btn-block" style="height:48px;font-size:16px;" @click="submit">确认打卡</button>
+  </div>
+
+  <!-- ── 姓名选择弹层 ── -->
+  <div v-if="showSheet" class="td-overlay" @click="closeSheet"></div>
+  <div v-if="showSheet" class="name-sheet">
+    <div class="name-sheet-header">
+      <span class="name-sheet-title">选择姓名</span>
+      <span class="name-sheet-cancel" @click="closeSheet">取消</span>
+    </div>
+    <div class="name-sheet-search">
+      <input v-model="search" placeholder="搜索名字…" />
+    </div>
+    <div class="name-list">
+      <div v-if="filteredNames.length === 0" class="name-item-empty">未找到匹配成员</div>
+      <div v-for="n in filteredNames" :key="n"
+        class="name-item" :class="f.name===n?'selected':''"
+        @click="selectName(n)">
+        <span class="name-item-text">{{ n }}</span>
+        <i v-if="f.name===n" class="fas fa-check name-item-check"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 打卡成功弹层 ── -->
+  <div v-if="showOk" class="td-overlay"></div>
+  <div v-if="showOk" class="td-sheet" style="padding:28px 20px 32px;text-align:center;">
+    <div style="font-size:52px;margin-bottom:14px;">🎉</div>
+    <div style="font-size:18px;font-weight:700;color:var(--td-text-1);margin-bottom:6px;">打卡成功！</div>
+    <div style="font-size:13px;color:var(--td-text-2);margin-bottom:4px;">{{ f.name }}，你今天又完成了一项好习惯</div>
+    <div style="font-size:12px;color:var(--td-text-3);margin-bottom:20px;">21天正念冥想营</div>
+    <div style="background:var(--td-text-1);border-radius:12px;padding:16px;display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:20px;">
+      <span style="font-size:28px;">🔥</span>
+      <div style="text-align:left;">
+        <div style="color:rgba(255,255,255,0.65);font-size:12px;">连续打卡</div>
+        <div style="color:#fff;font-size:46px;font-weight:900;line-height:1.1;">7</div>
+        <div style="color:rgba(255,255,255,0.65);font-size:12px;margin-top:-2px;">天</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button class="td-btn td-btn-outline td-btn-block" @click="_nav('poster')">🎨 生成海报</button>
+      <button class="td-btn td-btn-primary td-btn-block" @click="showT('调起微信分享...')">👥 邀请朋友</button>
+      <button @click="showOk=false;_nav('home')" style="font-size:13px;color:var(--td-text-3);padding:8px;cursor:pointer;background:none;border:none;">稍后再说</button>
+    </div>
+  </div>
+
+  <div v-if="toast" class="td-toast">{{ toast }}</div>
+</div>
+<script src="../assets/js/vue.js"></script>
+<script>
+function _nav(p) { if (window.parent !== window) window.parent.postMessage({ navigate: p }, '*'); }
+new Vue({
+  el: '#app',
+  data: {
+    showSheet: false,
+    showOk: false,
+    nameErr: false,
+    search: '',
+    toast: '',
+    f: { name: '', thought: '', photos: 0 },
+    // 封闭模式固定成员名单（示例数据）
+    members: [
+      '陈雨桐', '刘思远', '王晓涵', '张明宇', '李静怡',
+      '赵子轩', '孙慧敏', '周嘉豪', '吴雪梅', '郑浩然',
+      '林小燕', '徐志远', '何雅婷', '马俊峰', '胡晨曦',
+      '谢依晨', '高天宇', '罗文静', '韩冬阳', '肖佳怡',
+    ],
+  },
+  computed: {
+    filteredNames() {
+      const q = this.search.trim();
+      if (!q) return this.members;
+      return this.members.filter(n => n.includes(q));
+    }
+  },
+  methods: {
+    openSheet() { this.search = ''; this.showSheet = true; },
+    closeSheet() { this.showSheet = false; },
+    selectName(n) { this.f.name = n; this.nameErr = false; this.showSheet = false; },
+    submit() {
+      if (!this.f.name) { this.nameErr = true; this.showT('请先选择姓名'); return; }
+      this.showOk = true;
+    },
+    showT(m) { this.toast = m; setTimeout(() => this.toast = '', 2000); }
+  }
+});
+</script>
+</body>
+</html>

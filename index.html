@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>打卡小程序 · 原型</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Roboto, sans-serif;
+      background: #f0f0f0;
+      display: flex; flex-direction: column;
+      color: #1a1a1a;
+    }
+
+    /* ── Top Bar ── */
+    .topbar {
+      height: 44px; background: #1a1a1a;
+      display: flex; align-items: center; padding: 0 14px; gap: 10px;
+      flex-shrink: 0; border-bottom: 1px solid #2d2d2d;
+    }
+    .tb-logo { color: #fff; font-size: 13px; font-weight: 700; letter-spacing: 0.3px; }
+    .tb-sep  { width: 1px; height: 16px; background: #3a3a3a; }
+    .tb-tag  { font-size: 11px; color: #777; }
+    .tb-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .nav-btn {
+      width: 26px; height: 26px; border-radius: 5px;
+      border: 1px solid #333; background: #252525; color: #666;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; transition: all .15s;
+    }
+    .nav-btn:hover:not(:disabled) { background: #333; color: #aaa; }
+    .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .page-crumb {
+      font-size: 11px; color: #aaa; background: #252525;
+      border: 1px solid #333; padding: 3px 10px; border-radius: 4px;
+      max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* ── Layout ── */
+    .main { flex: 1; display: flex; overflow: hidden; }
+
+    /* ── Left Sidebar ── */
+    .sidebar {
+      width: 320px; background: #fff; border-right: 1px solid #e8e8e8;
+      display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto;
+    }
+    .sidebar::-webkit-scrollbar { display: none; }
+    .sb-section {
+      padding: 12px 14px 5px; font-size: 10px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase; color: #bbb;
+    }
+    .page-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 12px 7px 14px; cursor: pointer;
+      font-size: 12.5px; color: #444; transition: background .1s;
+      border-left: 3px solid transparent; user-select: none;
+    }
+    .page-item:hover { background: #f8f8f8; }
+    .page-item.active {
+      background: #f5f5f5; color: #111; font-weight: 600;
+      border-left-color: #111;
+    }
+    .pi-icon  { font-size: 13px; width: 18px; text-align: center; flex-shrink: 0; }
+    .pi-label { flex: 1; }
+    .pi-num   { font-size: 10px; color: #ccc; }
+    .page-item.active .pi-num { color: #888; }
+    .sb-footer {
+      margin: 8px 12px 14px; padding: 10px 12px;
+      background: #f7f7f7; border-radius: 8px;
+      font-size: 10.5px; color: #999; line-height: 1.85;
+      border: 1px solid #eee;
+    }
+
+    /* ── Canvas ── */
+    .canvas {
+      flex: 1; min-height: 0; background: #e4e4e4; display: flex;
+      align-items: center; justify-content: center;
+      overflow: hidden; position: relative;
+      background-image: radial-gradient(circle, #d0d0d0 1px, transparent 1px);
+      background-size: 22px 22px;
+    }
+    /* 全宽 iframe：占满画布，避免 flex 居中导致高度坍塌 */
+    .canvas-full {
+      flex: 1; align-self: stretch; width: 100%; min-height: 0;
+      display: flex; flex-direction: column;
+    }
+    .canvas-full iframe { flex: 1; width: 100%; min-height: 0; border: none; display: block; background: #fff; }
+    .phone-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .phone-label { font-size: 11px; color: #888; font-weight: 500; letter-spacing: 0.3px; }
+
+    /* Phone Frame */
+    .device {
+      position: relative; background: #111; border-radius: 44px; padding: 12px;
+      box-shadow: 0 0 0 1px #222, 0 24px 60px rgba(0,0,0,0.38),
+                  inset 0 0 0 1px rgba(255,255,255,0.05);
+      width: 356px; height: 752px;
+    }
+    .device-notch {
+      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 108px; height: 24px; background: #111;
+      border-radius: 0 0 16px 16px; z-index: 10;
+    }
+    .device-btn { position: absolute; background: #222; }
+    .device-btn-v1 { left: -3px; top: 104px; width: 3px; height: 28px; border-radius: 2px 0 0 2px; }
+    .device-btn-v2 { left: -3px; top: 142px; width: 3px; height: 28px; border-radius: 2px 0 0 2px; }
+    .device-btn-pw { right: -3px; top: 136px; width: 3px; height: 46px; border-radius: 0 2px 2px 0; }
+    .device-screen {
+      width: 100%; height: 100%; background: #fff;
+      border-radius: 33px; overflow: hidden;
+    }
+    .device-frame { width: 100%; height: 100%; border: none; display: block; }
+
+    /* ── Right Notes Panel ── */
+    .notes-panel {
+      width: 320px; flex: 0 0 320px; min-height: 0;
+      background: #fff; border-left: 1px solid #e8e8e8;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    /* 包裹 header + 可滚动内容，使 flex 子项获得明确高度 budget */
+    .np-inner {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .np-header {
+      padding: 14px 16px 12px; border-bottom: 1px solid #f0f0f0; flex-shrink: 0;
+    }
+    .np-page-title {
+      font-size: 13px; font-weight: 700; color: #111; margin-bottom: 4px;
+    }
+    .np-badge {
+      display: inline-block; font-size: 10px; background: #f0f0f0;
+      color: #666; padding: 2px 8px; border-radius: 3px; font-weight: 600;
+    }
+    .np-content {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 0 20px;
+    }
+    .np-content::-webkit-scrollbar { width: 5px; }
+    .np-content::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+    .np-section-title {
+      padding: 14px 16px 8px; font-size: 10px; font-weight: 700;
+      letter-spacing: 1.2px; text-transform: uppercase; color: #bbb;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .np-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 5px 16px; font-size: 13.5px; color: #1a6b8a; line-height: 1.65;
+    }
+    .np-bullet {
+      width: 5px; height: 5px; border-radius: 50%; background: #7ab8cc;
+      flex-shrink: 0; margin-top: 7px;
+    }
+    .np-divider { height: 1px; background: #f2f2f2; margin: 6px 16px; }
+    .np-empty-wrap {
+      align-items: center;
+      justify-content: center;
+    }
+    .np-empty { padding: 28px 16px; text-align: center; color: #ccc; font-size: 12px; }
+
+    [v-cloak] { display: none; }
+  </style>
+</head>
+<body>
+<div id="app" v-cloak style="height:100%; display:flex; flex-direction:column;">
+
+  <!-- Top Bar -->
+  <div class="topbar">
+    <span class="tb-logo">打卡小程序</span>
+    <div class="tb-sep"></div>
+    <span class="tb-tag">线框原型 · {{ parentCount }} 个页面</span>
+    <div class="tb-right">
+      <button class="nav-btn" @click="goBack" :disabled="idx <= 0" title="返回">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <button class="nav-btn" @click="goForward" :disabled="idx >= hist.length - 1" title="前进">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+      <div class="page-crumb">{{ cur.icon }} {{ cur.label }}</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- ① 左侧：页面列表 -->
+    <div class="sidebar">
+      <div class="sb-section">页面列表</div>
+      <template v-for="p in pages">
+        <!-- 父页面 -->
+        <div v-if="!p.isChild" :key="p.id"
+          class="page-item" :class="{ active: curId === p.id }"
+          @click="go(p.key, p.params||'')">
+          <span class="pi-icon">{{ p.icon }}</span>
+          <span class="pi-label">{{ p.label }}</span>
+          <span class="pi-num">P{{ p.pNum }}</span>
+        </div>
+        <!-- 子页面（空态） -->
+        <div v-else :key="p.id"
+          style="display:flex;align-items:center;gap:6px;padding:5px 12px 5px 26px;cursor:pointer;font-size:11.5px;border-left:3px solid transparent;transition:background .1s;"
+          :style="curId===p.id ? 'background:#f5f5f5;border-left-color:#bbb;color:#555;font-weight:600;' : 'color:#bbb;'"
+          @click="go(p.key, p.params||'')">
+          <span style="font-size:10px;flex-shrink:0;color:#ccc;">└</span>
+          <span style="flex:1;">{{ p.label }}</span>
+        </div>
+      </template>
+      <div style="margin: 6px 12px 0; border-top: 1px solid #f0f0f0;"></div>
+      <div class="sb-footer">
+        线框原型 · 黑白灰<br>
+        TDesign 微信小程序<br>
+        NavBar 44px · Cell 56px<br>
+        TabBar 50px
+      </div>
+    </div>
+
+    <!-- ② 中间：手机预览 / 全宽视图 -->
+    <div class="canvas" style="overflow:hidden;">
+
+      <!-- 全宽模式（业务流程等无需手机框的页面） -->
+      <template v-if="cur.fullCanvas">
+        <div class="canvas-full">
+          <iframe :src="iframeSrc"></iframe>
+        </div>
+      </template>
+
+      <!-- 手机框模式（普通页面） -->
+      <template v-else>
+        <div class="phone-wrap">
+          <div class="phone-label">{{ cur.label }}</div>
+          <div class="device">
+            <div class="device-notch"></div>
+            <div class="device-btn device-btn-v1"></div>
+            <div class="device-btn device-btn-v2"></div>
+            <div class="device-btn device-btn-pw"></div>
+            <div class="device-screen">
+              <iframe :src="iframeSrc" class="device-frame"
+                style="width:332px; height:728px; border:none; display:block;
+                       transform-origin: top left;"></iframe>
+            </div>
+          </div>
+        </div>
+      </template>
+
+    </div>
+
+    <!-- ③ 右侧：交互说明 -->
+    <div class="notes-panel">
+      <div v-if="note" key="has-note" class="np-inner">
+        <div class="np-header">
+          <div class="np-page-title">{{ cur.icon }} {{ cur.label }}</div>
+          <span class="np-badge">交互说明</span>
+        </div>
+        <div class="np-content">
+
+          <!-- 交互说明列表 -->
+          <div class="np-section-title">
+            <i class="fas fa-hand-pointer" style="font-size:11px; color:#bbb;"></i>
+            交互行为
+          </div>
+          <div v-for="item in note.interactions" :key="item" class="np-item">
+            <div class="np-bullet"></div>
+            <span>{{ item }}</span>
+          </div>
+
+        </div>
+      </div>
+      <div v-else class="np-inner np-empty-wrap">
+        <div class="np-empty">
+          <i class="fas fa-comment-dots" style="font-size:22px; margin-bottom:8px; display:block;"></i>
+          暂无说明
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="assets/js/vue.js"></script>
+<script>
+// id = key + '#' + params（唯一标识，包含空态变体）
+const PAGES = [
+  { id:'flow',                  key:'flow',           params:'',        icon:'🔀', label:'业务流程',     pNum:'00', fullCanvas:true },
+  { id:'home',                  key:'home',           params:'',        icon:'🏠', label:'今日打卡',     pNum:'01' },
+  { id:'home#empty=1',          key:'home',           params:'empty=1', icon:'',   label:'空态·无任务',  isChild:true },
+  { id:'checkin-closed',        key:'checkin-closed', params:'',        icon:'',   label:'封闭模式·确认打卡', isChild:true },
+  { id:'profile',               key:'profile',        params:'',        icon:'👤', label:'我的',          pNum:'02' },
+  { id:'profile#login=0',       key:'profile',        params:'login=0', icon:'',   label:'未登录态',      isChild:true },
+  { id:'checkin-list',          key:'checkin-list',   params:'',        icon:'📌', label:'打卡项列表',   pNum:'03' },
+  { id:'checkin-list#empty=1',  key:'checkin-list',   params:'empty=1', icon:'',   label:'空态·无打卡项', isChild:true },
+  { id:'checkin-detail',                    key:'checkin-detail', params:'',                        icon:'🏆', label:'打卡项详情',      pNum:'04' },
+  { id:'checkin-detail#joined=0',           key:'checkin-detail', params:'joined=0',                icon:'',   label:'未加入态',         isChild:true },
+  { id:'checkin-detail#status=pending',     key:'checkin-detail', params:'status=pending',           icon:'',   label:'待开始态',         isChild:true },
+  { id:'checkin-detail#view=feed',          key:'checkin-feed',   params:'',                        icon:'',   label:'今日打卡动态',     isChild:true },
+  { id:'checkin-detail#view=status',        key:'checkin-detail', params:'view=status',              icon:'',   label:'打卡状态格栅',     isChild:true },
+  { id:'checkin-detail#view=statsview',     key:'checkin-detail', params:'view=statsview',           icon:'',   label:'打卡统计',         isChild:true },
+  { id:'checkin-detail#view=members',       key:'checkin-detail', params:'view=members',             icon:'',   label:'人员管理',         isChild:true },
+  { id:'create-checkin',                    key:'create-checkin', params:'',                 icon:'✏️', label:'发起打卡',     pNum:'05' },
+  { id:'poster',                key:'poster',         params:'',        icon:'🎨', label:'生成海报',     pNum:'06' },
+  { id:'checkin-feed',          key:'checkin-feed',   params:'',        icon:'📰', label:'全部打卡动态', pNum:'07' },
+  { id:'checkin-feed#empty=1',  key:'checkin-feed',   params:'empty=1', icon:'',   label:'空态·暂无动态', isChild:true },
+  { id:'my-history',            key:'my-history',     params:'',        icon:'📋', label:'我的打卡记录', pNum:'08' },
+  { id:'my-history#empty=1',    key:'my-history',     params:'empty=1', icon:'',   label:'空态·暂无记录', isChild:true },
+  { id:'share-card',            key:'share-card',     params:'',        icon:'📤', label:'分享卡片',     pNum:'09' },
+  { id:'brand-share',           key:'brand-share',    params:'',        icon:'',   label:'品牌分享卡片', isChild:true },
+];
+
+const NOTES = {
+  flow: {
+    interactions: [
+      '页面包含 8 个完整业务流程，每个流程带编号和说明，可上下滚动查看',
+      '① 用户登录流程：首次打开 → 未登录态 → 微信授权 → 进入首页',
+      '② 发起打卡流程：填写表单 → 选择开放/封闭模式 → 封闭模式可启用成员名单 → 发布',
+      '③ 加入打卡流程：点击分享卡片 → 登录 → 查看详情 → 开放直接加入 / 封闭选择名单',
+      '④ 每日打卡流程：选择任务 → 普通/封闭模式选姓名 → 填写感想照片 → 打卡成功 → 分享/海报',
+      '⑤ 修改打卡规则：我发起的 → 修改 → 编辑表单 → 保存 → 跳转详情',
+      '⑥ 人员管理流程：详情页入口 → 搜索/删除成员 → 行内二次确认 → 移除',
+      '⑦ 分享传播流程：三种触发场景（打卡后/主动/品牌）→ 分享面板 → 好友收到 → 触发加入流程',
+      '⑧ 催打卡流程：详情页催一催 → Sheet弹层 → 复制文字或发到微信群',
+      '流程图为自左向右（LR）布局；单个图过宽时可在卡片内横向拖动查看',
+      '中间画布全宽 iframe 占满高度，页面内主内容区可纵向滚动',
+      '流程图使用 Mermaid.js 渲染（需联网加载 CDN）',
+    ],
+    nav: [],
+  },
+  home: {
+    interactions: [
+      '点击「打卡」按钮 → 普通模式进入全屏打卡页（覆盖主页），封闭模式跳转「封闭模式·确认打卡」子页',
+      '封闭模式打卡项在标题旁显示「🔒封闭」标签，以示区分',
+      '姓名默认带入上次打卡输入的内容（普通模式），如果第一次则自动带入微信名称',
+      '最多添加 3 张照片，超出按钮禁用',
+      '确认打卡成功 → 关闭 Sheet，展示全屏成功遮罩',
+      '成功遮罩「生成海报」→ 跳转海报页',
+      '成功遮罩「邀请朋友」→ 调起微信分享面板',
+      '成功遮罩「稍后再说」→ 关闭遮罩，回到主页',
+      '底部 Tab「打卡项」→ 切换到打卡项列表',
+      '底部 Tab「我的」→ 切换到我的页面',
+    ],
+    nav: [
+      { key:'checkin-list', label:'打卡项（Tab 切换）',   dir:'forward' },
+      { key:'profile',      label:'我的（Tab 切换）',     dir:'forward' },
+      { key:'poster',       label:'生成海报（打卡成功后）',dir:'forward' },
+    ],
+  },
+  'checkin-closed': {
+    interactions: [
+      '返回箭头 → 返回今日打卡主页',
+      '姓名字段为只读选择器，不可手动输入，点击后弹出底部选择弹层',
+      '弹层顶部搜索框可按姓名模糊过滤成员列表',
+      '点击成员名字 → 选中并关闭弹层，选中项右侧显示对勾',
+      '点击弹层「取消」或遮罩 → 关闭弹层，不改变当前选中',
+      '打卡内容/感想为选填文本域，最多 200 字',
+      '最多添加 3 张照片（原型模拟点击添加）',
+      '未选姓名直接提交 → 选择器描边变红 + Toast 提示',
+      '确认打卡成功 → 展示全屏成功遮罩（含该成员名字）',
+      '成功遮罩「生成海报」→ 跳转海报页',
+      '成功遮罩「邀请朋友」→ 调起微信分享面板',
+      '成功遮罩「稍后再说」→ 返回今日打卡主页',
+    ],
+    nav: [
+      { key:'home',   label:'返回今日打卡', dir:'back' },
+      { key:'poster', label:'生成海报（打卡成功后）', dir:'forward' },
+    ],
+  },
+  stats: {
+    interactions: [
+      '月/年维度切换 → 数据联动刷新',
+      '点击热力图有打卡记录的格子 → 下方展开当日记录',
+      '再次点击其他格子 → 切换显示当日记录',
+      '点击「×」→ 关闭当日记录面板',
+      '今日格子高亮（环形描边）',
+      '无打卡记录的格子点击不响应',
+      '【注】此页已简化，各项目完成率和时段偏好已迁移至「我的」',
+    ],
+    nav: [
+      { key:'home',    label:'今日打卡（Tab）', dir:'back' },
+      { key:'profile', label:'我的（含完整统计）', dir:'forward' },
+    ],
+  },
+  profile: {
+    interactions: [
+      '页面有两种状态：已登录（默认）和未登录（?login=0）',
+      '未登录态：Hero 区显示虚线头像占位 + 说明文字 + 「微信一键登录」按钮；功能列表以 40% 透明度展示并显示锁图标',
+      '未登录态点击「微信一键登录」→ Toast"登录成功！"并切换为已登录态（模拟授权流程）',
+      '已登录态：右上角设置图标 → Toast"设置功能开发中"',
+      '已登录态：点击热力图有记录的格子 → 展开当日打卡记录面板（默认选中今天）',
+      '已登录态：点击「生成我的海报」→ 跳转海报生成页',
+      '已登录态：点击「全部打卡记录」→ 跳转记录列表页',
+      '底部 Tab「今日」/ 「打卡项」→ 切换对应主页',
+    ],
+    nav: [
+      { key:'home',         label:'今日打卡（Tab 切换）', dir:'back' },
+      { key:'checkin-list', label:'打卡项（Tab 切换）',   dir:'forward' },
+      { key:'poster',       label:'生成海报',             dir:'forward' },
+      { key:'my-history',   label:'我的打卡记录',         dir:'forward' },
+    ],
+  },
+  'checkin-list': {
+    interactions: [
+      '点击「我参与的」/「我发起的」Tab → 切换内容区（无动画）',
+      '卡片底部操作栏：「我参与的」有「分享」「详情」两个按钮',
+      '卡片底部操作栏：「我发起的」有「分享」「修改」「详情」三个按钮',
+      '「分享」→ 调起微信分享面板',
+      '「修改」→ 跳转编辑表单（仅我发起的）',
+      '「详情」→ 跳转打卡项详情页',
+      '点击右上角「＋ 发起」→ 跳转发起打卡表单',
+      '底部 Tab「今日」→ 切换到主页',
+      '底部 Tab「我的」→ 切换到我的页面',
+    ],
+    nav: [
+      { key:'home',           label:'今日（Tab 切换）',  dir:'back' },
+      { key:'profile',        label:'我的（Tab 切换）',  dir:'forward' },
+      { key:'checkin-detail', label:'打卡项详情',        dir:'forward' },
+      { key:'create-checkin', label:'发起打卡表单',      dir:'forward' },
+    ],
+  },
+  'checkin-detail': {
+    interactions: [
+      '封面图直接展示项目名称（白色大字，底部渐变遮罩），封面左下角有止观实验室 logo，右下角有状态标签',
+      '封面悬浮透明 NavBar：返回箭头、分享、更多操作',
+      '进行中状态：描述和打卡规则默认折叠，仅显示一行摘要（点击展开，展开后可再收起）',
+      '待开始状态：描述和打卡规则默认展开（因无其他内容可看）',
+      '底部按钮三种状态：① 未加入 → 「加入打卡」黑色主按钮，点击后 Toast 提示并切换为已加入；② 已加入进行中 → 「立即打卡」跳转今日打卡；③ 已加入待开始 → 「已加入·等待开始」灰色禁用态',
+      '点击「催一催 →」→ 底部 Sheet 上滑，显示今日进度条和未打卡成员列表',
+      '弹层「复制提醒文字」→ Toast 确认；「发到微信群」→ Toast 模拟',
+      '点击排行榜维度（连续/累计/活跃）→ 列表重排',
+      '点击「今日打卡动态」→ 跳转全部打卡动态页（独立页面）',
+      '点击「打卡状态」→ 页内切换至格栅视图，左右箭头切换日期，Tab 筛选全部/已/未打卡',
+      '点击「打卡统计」→ 页内切换至统计视图，选日期范围后展示每人打卡次数和完成率',
+      '点击「人员管理」→ 页内切换至人员管理视图，搜索框过滤；删除图标 → 行内二次确认',
+      '各子视图的返回箭头 → 返回主详情视图',
+    ],
+    nav: [
+      { key:'checkin-list', label:'返回打卡项列表', dir:'back' },
+      { key:'checkin-feed', label:'全部打卡动态',   dir:'forward' },
+    ],
+  },
+  'create-checkin': {
+    interactions: [
+      '返回箭头 → 返回打卡项列表',
+      '封面图默认展示 AI 自动生成预览（带止观实验室 logo），无需用户填写',
+      '「重新生成」→ 切换到下一个 AI 配色主题（共 5 套渐变风格）+ Toast 提示',
+      '「上传自定义图片」→ 切换为自定义封面状态（原型模拟）；「移除自定义图片」→ 切回 AI 封面',
+      '封面预览实时显示项目名称（未填写时显示占位文字）',
+      '参与模式（开放/封闭）置顶，点击卡片切换，封闭模式展示附加名单设置区',
+      '封闭模式附加字段：加入截止日期（必填）+ 启用成员名单 Toggle（选填，默认关闭）',
+      '「启用成员名单」Toggle 开启后展开录入区，关闭后隐藏，已录入内容保留',
+      '录入区提供两种方式：「从图片导入」→ 调起相册/相机并 OCR 识别（原型 Toast）；「粘贴示例」→ 填入示例名单',
+      '名单实时统计已录入人数（换行或逗号分隔均支持）；「一键清空」清空文本',
+      '启用名单且未填内容时提交 → Toast 提示录入名单',
+      '结束时间输入后，标签行内联显示橙红色「（持续打卡 N 天）」',
+      '打卡频率 Cell 点击 → 弹出底部 Sheet，可选：每月 / 每周 / 每天 / 法定工作日 / 法定节假日，默认每天',
+      '打卡规则：可打卡时间段（起止时间输入框）、允许一天多次打卡 Toggle',
+      '允许补卡 Toggle 默认关闭；开启后展开「补卡次数上限」「限制补卡时间」两行',
+      '必填校验顺序：项目名称 → 打卡描述 → 开始/结束时间 → 封闭模式附加字段',
+      '底部只保留「立即发布」/「保存修改」主按钮，无草稿和预览功能',
+      '提交成功后 1.2s 跳转至打卡项详情页',
+    ],
+    nav: [
+      { key:'checkin-list',   label:'返回打卡项列表',     dir:'back' },
+      { key:'checkin-detail', label:'跳转详情（发起成功）',dir:'forward' },
+    ],
+  },
+  poster: {
+    interactions: [
+      '返回箭头 → 返回个人中心',
+      '点击模板 Chip（晨光/暮光/极夜）→ 海报渐变配色实时更新',
+      '点击金句文字区域 → inline edit 模式，input 聚焦',
+      '金句 input 失焦 → 保存文本，回到展示态',
+      '点击照片上传区 → 模拟添加照片效果',
+      '已添加照片后点击照片区 → 移除照片',
+      '点击「保存」→ Toast 提示已保存',
+      '点击「朋友圈」/「发给好友」→ Toast 模拟分享',
+    ],
+    nav: [
+      { key:'profile', label:'返回个人中心', dir:'back' },
+    ],
+  },
+  'checkin-feed': {
+    interactions: [
+      '返回箭头 → 返回打卡项详情',
+      '按日期倒序分组，今天在最顶部',
+      '点击打卡照片缩略图 → Toast 模拟 wx.previewImage',
+      '页面暂不支持分页（原型展示固定数据）',
+    ],
+    nav: [
+      { key:'checkin-detail', label:'返回打卡项详情', dir:'back' },
+    ],
+  },
+  'share-card': {
+    interactions: [
+      '页面模拟微信聊天场景：上方展示「我」发出的卡片，下方展示群友收到的效果（左侧气泡）',
+      '卡片结构：应用标识行（止观实验室 logo + 名称）→ 卡片标题 → 封面图（含项目名 + 止观实验室 logo）→ 小程序标识',
+      '底部 Chip 切换三种示例场景：打卡提醒、邀请加入、打卡成功；封面渐变色和标题随之联动',
+      '点击任意卡片 → 跳转打卡项详情页（模拟用户点击卡片进入小程序）',
+    ],
+    nav: [
+      { key:'checkin-detail', label:'点击卡片进入打卡项详情', dir:'forward' },
+      { key:'brand-share',    label:'品牌分享卡片',           dir:'forward' },
+    ],
+  },
+  'brand-share': {
+    interactions: [
+      '页面同样模拟微信聊天：右侧展示「我」发出的品牌卡片，下方展示群友收到的效果',
+      '卡片结构：应用标识行 → 标题「帮助你成长的打卡小程序」→ 品牌海报 → 小程序标识',
+      '品牌海报内容：顶部止观实验室 logo，中央三行宣传语（善护念·常练习·自清净），底部品牌署名',
+      '底部五个圆形色块切换海报配色：深夜蓝 / 炭墨灰 / 禅意绿 / 暮色紫 / 苍穹蓝',
+      '当前选中配色以白圈+黑圈双层描边高亮，两张卡片同步切换',
+      '点击卡片 → Toast 模拟进入小程序',
+    ],
+    nav: [
+      { key:'share-card', label:'返回项目分享卡片', dir:'back' },
+    ],
+  },
+  'my-history': {
+    interactions: [
+      '返回箭头 → 返回个人中心',
+      '记录按日期倒序分组，最新在顶',
+      '感想文字超长时截断 + 省略号（不支持展开）',
+      '页面暂不支持分页（原型展示固定数据）',
+    ],
+    nav: [
+      { key:'profile', label:'返回个人中心', dir:'back' },
+    ],
+  },
+};
+
+new Vue({
+  el: '#app',
+  data: {
+    pages: PAGES,
+    curId: 'home',
+    hist: ['home'],
+    idx: 0,
+  },
+  computed: {
+    cur() { return this.pages.find(p => p.id === this.curId) || this.pages[0]; },
+    note() { return NOTES[this.cur.key] || null; },
+    iframeSrc() {
+      var p = this.cur;
+      return 'pages/' + p.key + '.html' + (p.params ? '?' + p.params : '');
+    },
+    parentCount() {
+      return this.pages.filter(function(p){ return !p.isChild; }).length;
+    },
+  },
+  mounted() {
+    window.addEventListener('message', e => {
+      if (e.data && e.data.navigate) this.go(e.data.navigate, e.data.params || '');
+    });
+  },
+  methods: {
+    go(k, params) {
+      var id = k + (params ? '#' + params : '');
+      // 如果 id 不在 PAGES 中，尝试动态匹配 key
+      if (!this.pages.find(p => p.id === id)) {
+        var found = this.pages.find(p => p.key === k && !p.isChild);
+        if (!found) return;
+        id = found.id;
+      }
+      if (id === this.curId) return;
+      this.hist = this.hist.slice(0, this.idx + 1);
+      this.hist.push(id);
+      this.idx = this.hist.length - 1;
+      this.curId = id;
+    },
+    goBack() {
+      if (this.idx > 0) { this.idx--; this.curId = this.hist[this.idx]; }
+    },
+    goForward() {
+      if (this.idx < this.hist.length - 1) { this.idx++; this.curId = this.hist[this.idx]; }
+    },
+  },
+});
+</script>
+</body>
+</html>
