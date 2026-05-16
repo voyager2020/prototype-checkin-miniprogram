@@ -109,6 +109,7 @@
       <p v-if="nameErr" style="font-size:12px;color:var(--td-text-1);margin-top:8px;font-weight:500;">
         <i class="fas fa-exclamation-circle" style="margin-right:4px;"></i>请先选择姓名
       </p>
+   
     </div>
 
     <!-- 今日感想 -->
@@ -188,6 +189,7 @@
 </div>
 <script src="../assets/js/vue.js"></script>
 <script>
+var LS_CLOSED_LAST_NAME = 'prototype-checkin-last-name-closed';
 function _nav(p) { if (window.parent !== window) window.parent.postMessage({ navigate: p }, '*'); }
 new Vue({
   el: '#app',
@@ -206,6 +208,12 @@ new Vue({
       '谢依晨', '高天宇', '罗文静', '韩冬阳', '肖佳怡',
     ],
   },
+  mounted() {
+    try {
+      var last = localStorage.getItem(LS_CLOSED_LAST_NAME);
+      if (last && this.members.indexOf(last) >= 0) this.f.name = last;
+    } catch (e) {}
+  },
   computed: {
     filteredNames() {
       const q = this.search.trim();
@@ -214,11 +222,17 @@ new Vue({
     }
   },
   methods: {
+    persistName() {
+      try {
+        if (this.f.name) localStorage.setItem(LS_CLOSED_LAST_NAME, this.f.name);
+      } catch (e) {}
+    },
     openSheet() { this.search = ''; this.showSheet = true; },
     closeSheet() { this.showSheet = false; },
     selectName(n) { this.f.name = n; this.nameErr = false; this.showSheet = false; },
     submit() {
       if (!this.f.name) { this.nameErr = true; this.showT('请先选择姓名'); return; }
+      this.persistName();
       this.showOk = true;
     },
     showT(m) { this.toast = m; setTimeout(() => this.toast = '', 2000); }

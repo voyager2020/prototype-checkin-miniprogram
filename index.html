@@ -57,13 +57,14 @@
       padding: 7px 12px 7px 14px; cursor: pointer;
       font-size: 12.5px; color: #444; transition: background .1s;
       border-left: 3px solid transparent; user-select: none;
+      min-height: 34px;
     }
     .page-item:hover { background: #f8f8f8; }
     .page-item.active {
       background: #f5f5f5; color: #111; font-weight: 600;
       border-left-color: #111;
     }
-    .pi-icon  { font-size: 13px; width: 18px; text-align: center; flex-shrink: 0; }
+    .pi-icon  { font-size: 13px; width: 20px; text-align: center; flex-shrink: 0; color: #555; }
     .pi-label { flex: 1; }
     .pi-num   { font-size: 10px; color: #ccc; }
     .page-item.active .pi-num { color: #888; }
@@ -178,7 +179,7 @@
   <div class="topbar">
     <span class="tb-logo">打卡小程序</span>
     <div class="tb-sep"></div>
-    <span class="tb-tag">线框原型 · {{ parentCount }} 个页面</span>
+    <span class="tb-tag">线框原型 · 共 {{ screenCount }} 个界面</span>
     <div class="tb-right">
       <button class="nav-btn" @click="goBack" :disabled="idx <= 0" title="返回">
         <i class="fas fa-chevron-left"></i>
@@ -193,27 +194,19 @@
   <!-- Main -->
   <div class="main">
 
-    <!-- ① 左侧：页面列表 -->
+    <!-- ① 左侧：页面树（分组 + 全量节点，二级/三级与一级同一套选中样式） -->
     <div class="sidebar">
-      <div class="sb-section">页面列表</div>
-      <template v-for="p in pages">
-        <!-- 父页面 -->
-        <div v-if="!p.isChild" :key="p.id"
+      <div v-for="(p, idx) in pages" :key="p.id">
+        <div v-if="showSection(idx)" class="sb-section">{{ p.section }}</div>
+        <div
           class="page-item" :class="{ active: curId === p.id }"
+          :style="{ paddingLeft: (14 + (p.depth || 0) * 14) + 'px' }"
           @click="go(p.key, p.params||'')">
-          <span class="pi-icon">{{ p.icon }}</span>
+          <span class="pi-icon">{{ treeIcon(p) }}</span>
           <span class="pi-label">{{ p.label }}</span>
           <span class="pi-num">P{{ p.pNum }}</span>
         </div>
-        <!-- 子页面（空态） -->
-        <div v-else :key="p.id"
-          style="display:flex;align-items:center;gap:6px;padding:5px 12px 5px 26px;cursor:pointer;font-size:11.5px;border-left:3px solid transparent;transition:background .1s;"
-          :style="curId===p.id ? 'background:#f5f5f5;border-left-color:#bbb;color:#555;font-weight:600;' : 'color:#bbb;'"
-          @click="go(p.key, p.params||'')">
-          <span style="font-size:10px;flex-shrink:0;color:#ccc;">└</span>
-          <span style="flex:1;">{{ p.label }}</span>
-        </div>
-      </template>
+      </div>
       <div style="margin: 6px 12px 0; border-top: 1px solid #f0f0f0;"></div>
       <div class="sb-footer">
         线框原型 · 黑白灰<br>
@@ -287,31 +280,34 @@
 
 <script src="assets/js/vue.js"></script>
 <script>
-// id = key + '#' + params（唯一标识，包含空态变体）
+// id = key + '#' + params（唯一标识变体）；section / depth 仅用于左侧分组与缩进，不影响 iframe 路由
 const PAGES = [
-  { id:'flow',                  key:'flow',           params:'',        icon:'🔀', label:'业务流程',     pNum:'00', fullCanvas:true },
-  { id:'home',                  key:'home',           params:'',        icon:'🏠', label:'今日打卡',     pNum:'01' },
-  { id:'home#empty=1',          key:'home',           params:'empty=1', icon:'',   label:'空态·无任务',  isChild:true },
-  { id:'checkin-closed',        key:'checkin-closed', params:'',        icon:'',   label:'封闭模式·确认打卡', isChild:true },
-  { id:'profile',               key:'profile',        params:'',        icon:'👤', label:'我的',          pNum:'02' },
-  { id:'profile#login=0',       key:'profile',        params:'login=0', icon:'',   label:'未登录态',      isChild:true },
-  { id:'checkin-list',          key:'checkin-list',   params:'',        icon:'📌', label:'打卡项列表',   pNum:'03' },
-  { id:'checkin-list#empty=1',  key:'checkin-list',   params:'empty=1', icon:'',   label:'空态·无打卡项', isChild:true },
-  { id:'checkin-detail',                    key:'checkin-detail', params:'',                        icon:'🏆', label:'打卡项详情',      pNum:'04' },
-  { id:'checkin-detail#joined=0',           key:'checkin-detail', params:'joined=0',                icon:'',   label:'未加入态',         isChild:true },
-  { id:'checkin-detail#status=pending',     key:'checkin-detail', params:'status=pending',           icon:'',   label:'待开始态',         isChild:true },
-  { id:'checkin-detail#view=feed',          key:'checkin-feed',   params:'',                        icon:'',   label:'今日打卡动态',     isChild:true },
-  { id:'checkin-detail#view=status',        key:'checkin-detail', params:'view=status',              icon:'',   label:'打卡状态格栅',     isChild:true },
-  { id:'checkin-detail#view=statsview',     key:'checkin-detail', params:'view=statsview',           icon:'',   label:'打卡统计',         isChild:true },
-  { id:'checkin-detail#view=members',       key:'checkin-detail', params:'view=members',             icon:'',   label:'人员管理',         isChild:true },
-  { id:'create-checkin',                    key:'create-checkin', params:'',                 icon:'✏️', label:'发起打卡',     pNum:'05' },
-  { id:'poster',                key:'poster',         params:'',        icon:'🎨', label:'生成海报',     pNum:'06' },
-  { id:'checkin-feed',          key:'checkin-feed',   params:'',        icon:'📰', label:'全部打卡动态', pNum:'07' },
-  { id:'checkin-feed#empty=1',  key:'checkin-feed',   params:'empty=1', icon:'',   label:'空态·暂无动态', isChild:true },
-  { id:'my-history',            key:'my-history',     params:'',        icon:'📋', label:'我的打卡记录', pNum:'08' },
-  { id:'my-history#empty=1',    key:'my-history',     params:'empty=1', icon:'',   label:'空态·暂无记录', isChild:true },
-  { id:'share-card',            key:'share-card',     params:'',        icon:'📤', label:'分享卡片',     pNum:'09' },
-  { id:'brand-share',           key:'brand-share',    params:'',        icon:'',   label:'品牌分享卡片', isChild:true },
+  { id:'flow',                          key:'flow',           params:'',               section:'业务流程',       depth:0, icon:'🔀', label:'流程总览',               pNum:'01', fullCanvas:true },
+  { id:'home',                          key:'home',           params:'',               section:'今日打卡',       depth:0, icon:'🏠', label:'今日打卡',               pNum:'02' },
+  { id:'home#empty=1',                  key:'home',           params:'empty=1',        section:'今日打卡',       depth:1, icon:'',   label:'空态 · 无任务',           pNum:'03' },
+  { id:'checkin-closed',               key:'checkin-closed', params:'',               section:'今日打卡',       depth:1, icon:'',   label:'封闭模式 · 确认打卡',      pNum:'04' },
+  { id:'checkin-open',                 key:'checkin-open',   params:'',               section:'今日打卡',       depth:1, icon:'',   label:'开放模式 · 确认打卡',      pNum:'05' },
+  { id:'profile',                       key:'profile',        params:'',               section:'个人中心',       depth:0, icon:'👤', label:'我的',                   pNum:'06' },
+  { id:'profile#login=0',               key:'profile',        params:'login=0',        section:'个人中心',       depth:1, icon:'',   label:'未登录态',               pNum:'07' },
+  { id:'checkin-list',                  key:'checkin-list',   params:'',               section:'打卡项 · 列表',   depth:0, icon:'📌', label:'打卡项列表',             pNum:'08' },
+  { id:'checkin-list#empty=1',          key:'checkin-list',   params:'empty=1',        section:'打卡项 · 列表',   depth:1, icon:'',   label:'空态 · 无打卡项',         pNum:'09' },
+  { id:'checkin-detail',                key:'checkin-detail', params:'',                      section:'打卡项 · 详情',   depth:0, icon:'🏆', label:'打卡项详情（主视图 · 我发起的）', pNum:'10' },
+  { id:'checkin-detail#role=participant', key:'checkin-detail', params:'role=participant', section:'打卡项 · 详情',   depth:1, icon:'',   label:'主视图 · 我参与的',           pNum:'11' },
+  { id:'checkin-detail#joined=0',       key:'checkin-detail', params:'joined=0',             section:'打卡项 · 详情',   depth:1, icon:'',   label:'未加入态',                     pNum:'12' },
+  { id:'checkin-detail#status=pending', key:'checkin-detail', params:'status=pending', section:'打卡项 · 详情',   depth:1, icon:'',   label:'待开始态',               pNum:'13' },
+  { id:'checkin-detail#view=feed',      key:'checkin-feed',   params:'',               section:'打卡项 · 详情',   depth:2, icon:'',   label:'子视图 · 今日打卡动态',   pNum:'14' },
+  { id:'checkin-detail#view=status',    key:'checkin-detail', params:'view=status',    section:'打卡项 · 详情',   depth:2, icon:'',   label:'子视图 · 打卡状态格栅',   pNum:'15' },
+  { id:'checkin-detail#view=statsview', key:'checkin-detail', params:'view=statsview', section:'打卡项 · 详情',   depth:2, icon:'',   label:'子视图 · 打卡统计',       pNum:'16' },
+  { id:'checkin-detail#view=members',   key:'checkin-detail', params:'view=members',   section:'打卡项 · 详情',   depth:2, icon:'',   label:'子视图 · 人员管理',       pNum:'17' },
+  { id:'create-checkin',                key:'create-checkin', params:'',               section:'发起与海报',     depth:0, icon:'✏️', label:'发起打卡',               pNum:'18' },
+  { id:'poster',                        key:'poster',         params:'',               section:'发起与海报',     depth:0, icon:'🎨', label:'生成海报',               pNum:'19' },
+  { id:'checkin-feed',                  key:'checkin-feed',   params:'',               section:'动态与记录',     depth:0, icon:'📰', label:'全部打卡动态',           pNum:'20' },
+  { id:'checkin-feed#empty=1',          key:'checkin-feed',   params:'empty=1',        section:'动态与记录',     depth:1, icon:'',   label:'空态 · 暂无动态',         pNum:'21' },
+  { id:'my-history',                    key:'my-history',     params:'',               section:'动态与记录',     depth:0, icon:'📋', label:'我的打卡记录',           pNum:'22' },
+  { id:'my-history#empty=1',            key:'my-history',     params:'empty=1',        section:'动态与记录',     depth:1, icon:'',   label:'空态 · 暂无记录',         pNum:'23' },
+  { id:'share-card',                  key:'share-card',     params:'',               section:'微信分享场景',   depth:0, icon:'📤', label:'项目分享卡片',           pNum:'24' },
+  { id:'urge-share-card',             key:'urge-share-card', params:'',              section:'微信分享场景',   depth:1, icon:'',   label:'催一催 · 群聊小程序卡片',   pNum:'25' },
+  { id:'brand-share',                 key:'brand-share',    params:'',               section:'微信分享场景',   depth:1, icon:'',   label:'品牌分享卡片',           pNum:'26' },
 ];
 
 const NOTES = {
@@ -321,11 +317,11 @@ const NOTES = {
       '① 用户登录流程：首次打开 → 未登录态 → 微信授权 → 进入首页',
       '② 发起打卡流程：填写表单 → 选择开放/封闭模式 → 封闭模式可启用成员名单 → 发布',
       '③ 加入打卡流程：点击分享卡片 → 登录 → 查看详情 → 开放直接加入 / 封闭选择名单',
-      '④ 每日打卡流程：选择任务 → 普通/封闭模式选姓名 → 填写感想照片 → 打卡成功 → 分享/海报',
+      '④ 每日打卡流程：今日选任务 → 开放跳转开放确认页 / 封闭跳转封闭确认页 → 填选姓名（二次进入默认带出上次）→ 感想照片 → 成功 → 分享/海报',
       '⑤ 修改打卡规则：我发起的 → 修改 → 编辑表单 → 保存 → 跳转详情',
       '⑥ 人员管理流程：详情页入口 → 搜索/删除成员 → 行内二次确认 → 移除',
       '⑦ 分享传播流程：三种触发场景（打卡后/主动/品牌）→ 分享面板 → 好友收到 → 触发加入流程',
-      '⑧ 催打卡流程：详情页催一催 → Sheet弹层 → 复制文字或发到微信群',
+      '⑧ 催打卡流程：详情页催一催 → Sheet → 复制文字，或「发到微信群」→ 分享小程序卡片至群聊（见「催一催 · 群聊小程序卡片」页）',
       '流程图为自左向右（LR）布局；单个图过宽时可在卡片内横向拖动查看',
       '中间画布全宽 iframe 占满高度，页面内主内容区可纵向滚动',
       '流程图使用 Mermaid.js 渲染（需联网加载 CDN）',
@@ -334,26 +330,23 @@ const NOTES = {
   },
   home: {
     interactions: [
-      '点击「打卡」按钮 → 普通模式进入全屏打卡页（覆盖主页），封闭模式跳转「封闭模式·确认打卡」子页',
+      '点击「打卡」→ 开放模式跳转「开放模式 · 确认打卡」独立页；封闭模式跳转「封闭模式 · 确认打卡」独立页',
       '封闭模式打卡项在标题旁显示「🔒封闭」标签，以示区分',
-      '姓名默认带入上次打卡输入的内容（普通模式），如果第一次则自动带入微信名称',
-      '最多添加 3 张照片，超出按钮禁用',
-      '确认打卡成功 → 关闭 Sheet，展示全屏成功遮罩',
-      '成功遮罩「生成海报」→ 跳转海报页',
-      '成功遮罩「邀请朋友」→ 调起微信分享面板',
-      '成功遮罩「稍后再说」→ 关闭遮罩，回到主页',
+      '开放 / 封闭确认页的姓名默认策略见对应页面说明（第二次进入带出上一次姓名）',
       '底部 Tab「打卡项」→ 切换到打卡项列表',
       '底部 Tab「我的」→ 切换到我的页面',
     ],
     nav: [
+      { key:'checkin-open',   label:'开放模式 · 确认打卡', dir:'forward' },
+      { key:'checkin-closed', label:'封闭模式 · 确认打卡', dir:'forward' },
       { key:'checkin-list', label:'打卡项（Tab 切换）',   dir:'forward' },
       { key:'profile',      label:'我的（Tab 切换）',     dir:'forward' },
-      { key:'poster',       label:'生成海报（打卡成功后）',dir:'forward' },
     ],
   },
   'checkin-closed': {
     interactions: [
       '返回箭头 → 返回今日打卡主页',
+      '再次进入本页（例如次日再次打卡同一封闭打卡项）→ 姓名默认带出上一次成功打卡所选姓名（原型用 localStorage `prototype-checkin-last-name-closed` 模拟）；若缓存姓名已不在当前成员名单中则不预填',
       '姓名字段为只读选择器，不可手动输入，点击后弹出底部选择弹层',
       '弹层顶部搜索框可按姓名模糊过滤成员列表',
       '点击成员名字 → 选中并关闭弹层，选中项右侧显示对勾',
@@ -365,6 +358,23 @@ const NOTES = {
       '成功遮罩「生成海报」→ 跳转海报页',
       '成功遮罩「邀请朋友」→ 调起微信分享面板',
       '成功遮罩「稍后再说」→ 返回今日打卡主页',
+    ],
+    nav: [
+      { key:'home',   label:'返回今日打卡', dir:'back' },
+      { key:'poster', label:'生成海报（打卡成功后）', dir:'forward' },
+    ],
+  },
+  'checkin-open': {
+    interactions: [
+      '返回箭头 → 返回今日打卡主页',
+      '再次进入本页 → 姓名输入框默认填入上一次成功打卡所提交姓名（原型用 localStorage `prototype-checkin-last-name-open` 模拟）；首次进入为空',
+      '姓名为必填单行文本，可编辑；未填写点击「确认打卡」→ 输入框描边强调 + Toast',
+      '打卡内容 / 感想选填，至多 200 字',
+      '打卡照片选填，至多 3 张（点击模拟添加）',
+      '确认打卡成功 → 先写入姓名缓存，再展示成功 Sheet（含个性化祝贺语）',
+      '成功 Sheet「生成海报」→ 跳转海报页',
+      '成功 Sheet「邀请朋友」→ Toast 模拟分享',
+      '成功 Sheet「稍后再说」→ 关闭 Sheet 并返回今日打卡主页',
     ],
     nav: [
       { key:'home',   label:'返回今日打卡', dir:'back' },
@@ -411,7 +421,7 @@ const NOTES = {
       '卡片底部操作栏：「我发起的」有「分享」「修改」「详情」三个按钮',
       '「分享」→ 调起微信分享面板',
       '「修改」→ 跳转编辑表单（仅我发起的）',
-      '「详情」→ 跳转打卡项详情页',
+      '「详情」→ 跳转打卡项详情：「我参与的」附带 `role=participant`；「我发起的」附带 `role=owner`',
       '点击右上角「＋ 发起」→ 跳转发起打卡表单',
       '底部 Tab「今日」→ 切换到主页',
       '底部 Tab「我的」→ 切换到我的页面',
@@ -425,23 +435,38 @@ const NOTES = {
   },
   'checkin-detail': {
     interactions: [
+      'URL 参数 `role=owner`（默认，我发起的）与 `role=participant`（我参与的）区分视角；从打卡项列表「详情」会附带对应参数',
+      '未加入态（`joined=0`）：描述与打卡规则默认整段展开，不显示折叠摘要行',
+      '进行中且已加入：描述与打卡规则默认折叠为一行摘要，点击展开；展开后显示「收起」',
+      '待开始状态：描述与打卡规则默认展开',
       '封面图直接展示项目名称（白色大字，底部渐变遮罩），封面左下角有止观实验室 logo，右下角有状态标签',
       '封面悬浮透明 NavBar：返回箭头、分享、更多操作',
-      '进行中状态：描述和打卡规则默认折叠，仅显示一行摘要（点击展开，展开后可再收起）',
-      '待开始状态：描述和打卡规则默认展开（因无其他内容可看）',
-      '底部按钮三种状态：① 未加入 → 「加入打卡」黑色主按钮，点击后 Toast 提示并切换为已加入；② 已加入进行中 → 「立即打卡」跳转今日打卡；③ 已加入待开始 → 「已加入·等待开始」灰色禁用态',
-      '点击「催一催 →」→ 底部 Sheet 上滑，显示今日进度条和未打卡成员列表',
-      '弹层「复制提醒文字」→ Toast 确认；「发到微信群」→ Toast 模拟',
-      '点击排行榜维度（连续/累计/活跃）→ 列表重排',
-      '点击「今日打卡动态」→ 跳转全部打卡动态页（独立页面）',
-      '点击「打卡状态」→ 页内切换至格栅视图，左右箭头切换日期，Tab 筛选全部/已/未打卡',
-      '点击「打卡统计」→ 页内切换至统计视图，选日期范围后展示每人打卡次数和完成率',
-      '点击「人员管理」→ 页内切换至人员管理视图，搜索框过滤；删除图标 → 行内二次确认',
-      '各子视图的返回箭头 → 返回主详情视图',
+      '底部按钮三种状态：① 未加入 → 「加入打卡」主按钮；② 已加入进行中 → 「立即打卡」跳转今日打卡；③ 已加入待开始 → 灰色「已加入·等待开始」',
+      '点击「催一催 →」→ 底部 Sheet：「复制提醒文字」关闭 Sheet 并 Toast；「发到微信群」→ 跳转「催一催 · 群聊小程序卡片」页，模拟群内展示的可点击小程序卡片',
+      '点击排行榜维度 → 列表重排',
+      '点击「今日打卡动态」「打卡状态」「打卡统计」→ 跳转或页内子视图',
+      '「人员管理」入口与待开始下的成员入口 **仅 role=owner（我发起的）** 显示；我参与者无此入口；误带 `view=members` 打开时自动回到主视图',
+      '人员管理列表中移除成员按钮仅发起人可见',
+      '各子视图返回箭头 → 回主详情视图',
     ],
     nav: [
       { key:'checkin-list', label:'返回打卡项列表', dir:'back' },
       { key:'checkin-feed', label:'全部打卡动态',   dir:'forward' },
+      { key:'urge-share-card', label:'催一催后发群（小程序卡片）', dir:'forward' },
+    ],
+  },
+  'urge-share-card': {
+    interactions: [
+      '场景链路：打卡详情（我发起的、进行中）→「催一催」Sheet →「发到微信群」→ 进入本页',
+      '顶部说明区交代上述链路；下方为微信群聊天背景模拟',
+      '卡片中部原为封面图的区域改为浅灰底名单区：标题「今日未打卡 · N 人」+ 姓名 Tag 列表（与详情页催一催 Sheet 示例名单一致），底部虚线下方为小字打卡项名称',
+      '分隔提示后为左侧气泡：群友收到的同一张卡片',
+      '点击任一卡片 → 跳转打卡项详情（`role=owner`，模拟点击小程序卡片）',
+      '返回箭头 → 回到打卡项详情（发起人视角）',
+      '底部脚注说明真机为调用微信分享选群能力，本页仅静态还原',
+    ],
+    nav: [
+      { key:'checkin-detail', label:'返回打卡详情（点卡片也会进入）', dir:'back' },
     ],
   },
   'create-checkin': {
@@ -505,6 +530,7 @@ const NOTES = {
     ],
     nav: [
       { key:'checkin-detail', label:'点击卡片进入打卡项详情', dir:'forward' },
+      { key:'urge-share-card', label:'催一催 · 群聊小程序卡片', dir:'forward' },
       { key:'brand-share',    label:'品牌分享卡片',           dir:'forward' },
     ],
   },
@@ -549,8 +575,8 @@ new Vue({
       var p = this.cur;
       return 'pages/' + p.key + '.html' + (p.params ? '?' + p.params : '');
     },
-    parentCount() {
-      return this.pages.filter(function(p){ return !p.isChild; }).length;
+    screenCount() {
+      return this.pages.length;
     },
   },
   mounted() {
@@ -559,11 +585,22 @@ new Vue({
     });
   },
   methods: {
+    showSection(idx) {
+      return idx === 0 || this.pages[idx].section !== this.pages[idx - 1].section;
+    },
+    treeIcon(p) {
+      if (p.icon) return p.icon;
+      var d = p.depth || 0;
+      if (d >= 2) return '⤷';
+      if (d === 1) return '↳';
+      return '·';
+    },
     go(k, params) {
       var id = k + (params ? '#' + params : '');
-      // 如果 id 不在 PAGES 中，尝试动态匹配 key
+      // 若拼接 id 未命中（含参数拼错），优先落到 id===key 的规范页，再按 key 首次出现降级
       if (!this.pages.find(p => p.id === id)) {
-        var found = this.pages.find(p => p.key === k && !p.isChild);
+        var found = this.pages.find(p => p.id === k)
+          || this.pages.find(p => p.key === k);
         if (!found) return;
         id = found.id;
       }

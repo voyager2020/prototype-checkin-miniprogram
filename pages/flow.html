@@ -190,7 +190,7 @@ flowchart LR
         <div class="flow-num">4</div>
         <div>
           <div class="flow-name">每日打卡流程</div>
-          <div class="flow-desc">普通模式填姓名；封闭模式从名单选择</div>
+          <div class="flow-desc">开放模式进入独立确认页填姓名（第二次进入默认带出上次）；封闭模式进入独立确认页从名单选择</div>
         </div>
       </div>
       <div class="flow-body">
@@ -198,7 +198,7 @@ flowchart LR
 flowchart LR
     A([开始]) --> B[今日打卡选任务]
     B --> C{打卡模式}
-    C -->|普通| D[确认页可改姓名]
+    C -->|开放| D[开放确认页填姓名]
     C -->|封闭| E[封闭页选姓名]
     D --> F[感想与照片选填]
     E --> F
@@ -313,7 +313,7 @@ flowchart LR
         <div class="flow-num">8</div>
         <div>
           <div class="flow-name">催打卡流程</div>
-          <div class="flow-desc">进行中详情；催一催；复制或发群</div>
+          <div class="flow-desc">进行中详情 → 催一催 → 复制文案或发群分享小程序卡片</div>
         </div>
       </div>
       <div class="flow-body">
@@ -324,7 +324,7 @@ flowchart LR
     C --> D[Sheet未打卡名单]
     D --> E{方式}
     E -->|复制| F[剪贴板Toast]
-    E -->|发群| G[JSSDK分享群]
+    E -->|发群| G[小程序卡片进微信群]
     F --> H[手动粘贴]
     H --> Z([结束])
     G --> Z

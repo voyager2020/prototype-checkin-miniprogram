@@ -113,7 +113,7 @@
           <button class="card-btn" @click="showT('调起微信分享...')">
             <i class="fas fa-share-nodes"></i> 分享
           </button>
-          <button class="card-btn primary" @click="_nav('checkin-detail')">
+          <button class="card-btn primary" @click="_nav('checkin-detail', cur === 'joined' ? 'role=participant' : 'role=owner')">
             <i class="fas fa-chevron-right"></i> 详情
           </button>
         </div>
@@ -166,7 +166,7 @@
           <button class="card-btn" @click="_nav('create-checkin', 'edit=1&name='+encodeURIComponent(item.name))">
             <i class="fas fa-pen"></i> 修改
           </button>
-          <button class="card-btn primary" @click="_nav('checkin-detail')">
+          <button class="card-btn primary" @click="_nav('checkin-detail', cur === 'joined' ? 'role=participant' : 'role=owner')">
             <i class="fas fa-chevron-right"></i> 详情
           </button>
         </div>

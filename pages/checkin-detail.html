@@ -118,16 +118,16 @@
 
       <!-- ① 描述 + 打卡规则（进行中时默认折叠） -->
       <div style="background:var(--td-bg-card);">
-        <!-- 折叠时显示摘要行 -->
-        <div v-if="status==='started' && !showDetail"
+        <!-- 折叠时显示摘要行（仅已加入且进行中） -->
+        <div v-if="status==='started' && joined && !showDetail"
           @click="showDetail=true"
           style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;cursor:pointer;">
           <span style="font-size:13px;color:var(--td-text-3);">打卡日期  2026-05-14 ~ 2026-06-13 · 每天</span>
           <i class="fas fa-chevron-down" style="font-size:11px;color:var(--td-text-4);margin-left:8px;"></i>
         </div>
 
-        <!-- 展开内容 -->
-        <template v-if="status==='pending' || showDetail">
+        <!-- 展开内容：待开始 / 手动展开；未加入态默认展开 -->
+        <template v-if="status==='pending' || showDetail || !joined">
           <div style="padding:14px 16px 12px;border-bottom:1px solid var(--td-border);">
             <p style="font-size:14px;color:var(--td-text-2);line-height:1.75;margin:0;">
               每天完成30分钟专注阅读，并在打卡时记录心得感想。坚持阅读，持续成长，让读书成为每日最重要的一件事。
@@ -155,8 +155,8 @@
                 <span style="color:var(--td-text-1);">封闭模式 · 28 人</span>
               </div>
             </div>
-            <!-- 进行中状态下的收起按钮 -->
-            <div v-if="status==='started'" @click="showDetail=false"
+            <!-- 已加入且进行中时可收起 -->
+            <div v-if="status==='started' && joined" @click="showDetail=false"
               style="display:flex;align-items:center;justify-content:center;gap:4px;margin-top:12px;cursor:pointer;padding:4px 0;">
               <span style="font-size:12px;color:var(--td-text-3);">收起</span>
               <i class="fas fa-chevron-up" style="font-size:10px;color:var(--td-text-4);"></i>
@@ -231,7 +231,7 @@
             <div class="entry-icon">📋</div>
             <div class="entry-info">
               <div class="entry-title">打卡状态</div>
-              <div class="entry-desc">查看全部成员的每日打卡情况</div>
+              <div class="entry-desc">{{ isOwner ? '查看全部成员的每日打卡情况' : '查看成员的每日打卡情况' }}</div>
             </div>
             <i class="fas fa-chevron-right" style="color:var(--td-text-4);font-size:12px;"></i>
           </div>
@@ -243,7 +243,7 @@
             </div>
             <i class="fas fa-chevron-right" style="color:var(--td-text-4);font-size:12px;"></i>
           </div>
-          <div class="entry-row" @click="view='members'">
+          <div v-if="isOwner" class="entry-row" @click="view='members'">
             <div class="entry-icon">👥</div>
             <div class="entry-info">
               <div class="entry-title">人员管理</div>
@@ -262,8 +262,8 @@
           <div style="font-size:15px;font-weight:600;color:var(--td-text-1);margin-bottom:6px;">打卡项尚未开始</div>
           <div style="font-size:13px;color:var(--td-text-3);line-height:1.6;">预计于 2026-05-20 00:00 开始<br>统计数据将在开始后显示</div>
         </div>
-        <!-- 人员管理（未开始时也可用） -->
-        <div style="background:var(--td-bg-card);margin-top:8px;overflow:hidden;">
+        <!-- 人员管理（仅发起人，未开始时也可用） -->
+        <div v-if="isOwner" style="background:var(--td-bg-card);margin-top:8px;overflow:hidden;">
           <div class="entry-row" @click="view='members'">
             <div class="entry-icon">👥</div>
             <div class="entry-info">
@@ -317,7 +317,7 @@
           </div>
         </div>
         <button class="td-btn td-btn-outline td-btn-block" @click="copyUrge">复制提醒文字</button>
-        <button class="td-btn td-btn-primary td-btn-block" @click="showT('调起微信群分享...'); showUrge=false;">发到微信群</button>
+        <button class="td-btn td-btn-primary td-btn-block" @click="sendUrgeToWeChatGroup">发到微信群</button>
       </div>
     </div>
 
@@ -452,7 +452,7 @@
     <!-- 汇总行 -->
     <div style="padding:8px 16px;background:var(--td-bg-page);border-bottom:1px solid var(--td-border);display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:12px;color:var(--td-text-3);">共 {{ managedMembers.length }} 名成员 · {{ managedMembers.filter(m=>m.done).length }} 人今日已打卡</span>
-      <span style="font-size:12px;color:var(--td-text-3);">发起人可移除成员</span>
+      <span v-if="isOwner" style="font-size:12px;color:var(--td-text-3);">发起人可移除成员</span>
     </div>
 
     <!-- 成员列表 -->
@@ -469,8 +469,8 @@
             <div style="font-size:14px;font-weight:500;color:var(--td-text-1);">{{ m.name }}</div>
             <div style="font-size:11px;color:var(--td-text-3);margin-top:1px;">编号 {{ m.id }} · {{ m.done ? '今日已打卡 ✓' : '今日未打卡' }}</div>
           </div>
-          <!-- 删除按钮 -->
-          <button @click="deleteConfirmId=m.id"
+          <!-- 删除按钮（仅发起人） -->
+          <button v-if="isOwner" @click="deleteConfirmId=m.id"
             style="width:32px;height:32px;border:1px solid var(--td-border);border-radius:50%;background:var(--td-bg-page);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">
             <i class="fas fa-trash-can" style="font-size:12px;color:var(--td-text-3);"></i>
           </button>
@@ -508,7 +508,9 @@
 </div>
 <script src="../assets/js/vue.js"></script>
 <script>
-function _nav(p) { if (window.parent !== window) window.parent.postMessage({ navigate: p }, '*'); }
+function _nav(p, params) {
+  if (window.parent !== window) window.parent.postMessage({ navigate: p, params: params || '' }, '*');
+}
 
 var MEMBERS = [
   {id:1,name:'鲍容容',av:'🌸',done:true},{id:2,name:'季和',av:'😊',done:true},
@@ -536,6 +538,9 @@ new Vue({
     })(),
     status: (function() {
       return location.search.indexOf('status=pending') >= 0 ? 'pending' : 'started';
+    })(),
+    role: (function() {
+      return location.search.indexOf('role=participant') >= 0 ? 'participant' : 'owner';
     })(),
     joined: (function() {
       return location.search.indexOf('joined=0') < 0;
@@ -574,7 +579,13 @@ new Vue({
     memberSearch: '',
     deleteConfirmId: null,
   },
+  mounted: function() {
+    if (this.role === 'participant' && this.view === 'members') this.view = 'main';
+  },
   computed: {
+    isOwner: function() {
+      return this.role === 'owner';
+    },
     statusDate: function() {
       var d = new Date();
       d.setDate(d.getDate() + this.statusDayOffset);
@@ -625,6 +636,10 @@ new Vue({
     copyUrge: function() {
       this.showT('已复制到剪贴板');
       this.showUrge = false;
+    },
+    sendUrgeToWeChatGroup: function() {
+      this.showUrge = false;
+      _nav('urge-share-card');
     },
     showT: function(m) {
       this.toast = m;
