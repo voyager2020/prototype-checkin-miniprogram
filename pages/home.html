@@ -9,7 +9,8 @@
   <style>
     .chip { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:100px; font-size:12px; font-weight:500; border:1px solid var(--td-border); background:var(--td-bg-page); color:var(--td-text-2); }
     .task-card { background:var(--td-bg-card); border-radius:var(--td-radius-l); padding:14px; margin-bottom:8px; display:flex; align-items:center; gap:12px; box-shadow:var(--td-shadow-1); }
-    .task-card.done { opacity:0.45; }
+    /* 已完成略浅，但不整体压低透明度，避免「详情」按钮不易辨认 */
+    .task-card.done .task-emoji { opacity: 0.85; }
     .closed-badge { display:inline-flex; align-items:center; gap:3px; padding:1px 6px; border-radius:100px; font-size:10px; font-weight:600; background:var(--td-bg-hover); color:var(--td-text-2); border:1px solid var(--td-border); vertical-align:middle; margin-left:4px; }
     .task-emoji { width:44px; height:44px; background:var(--td-bg-page); border-radius:var(--td-radius-l); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; border:1px solid var(--td-border); }
     .section-lbl { font-size:11px; font-weight:700; color:var(--td-text-4); letter-spacing:1px; text-transform:uppercase; padding:10px 0 6px; }
@@ -59,7 +60,7 @@
           {{ t.name }}
           <span v-if="t.closed" class="closed-badge"><i class="fas fa-lock" style="font-size:8px;"></i>封闭</span>
         </p>
-        <p style="font-size:12px;color:var(--td-text-3);margin-top:3px;">{{ t.time }} · {{ t.group }} · {{ t.n }}人</p>
+        <p style="font-size:12px;color:var(--td-text-3);margin-top:3px;">{{ t.time }} · {{ t.n }}人</p>
       </div>
       <button class="td-btn td-btn-primary td-btn-sm" @click="open(t)">打卡</button>
     </div>
@@ -69,13 +70,13 @@
     <div v-for="t in done" :key="t.id" class="task-card done">
       <div class="task-emoji">{{ t.icon }}</div>
       <div style="flex:1;min-width:0;">
-        <p style="font-size:14px;font-weight:600;color:var(--td-text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.name }}</p>
-        <p style="font-size:12px;color:var(--td-text-3);margin-top:3px;">{{ t.time }} · {{ t.group }}</p>
+        <p style="font-size:14px;font-weight:600;color:var(--td-text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;">
+          {{ t.name }}
+          <i class="fas fa-check-circle" style="font-size:14px;color:var(--td-text-2);flex-shrink:0;" title="今日已打卡"></i>
+        </p>
+        <p style="font-size:12px;color:var(--td-text-3);margin-top:3px;">{{ t.time }} · 今日 {{ t.ct }}</p>
       </div>
-      <div style="text-align:right;flex-shrink:0;">
-        <i class="fas fa-check-circle" style="font-size:18px;color:var(--td-text-2);"></i>
-        <p style="font-size:11px;color:var(--td-text-3);margin-top:3px;">{{ t.ct }}</p>
-      </div>
+      <button type="button" class="td-btn td-btn-outline td-btn-sm" style="flex-shrink:0;" @click="goDetail(t)">详情</button>
     </div>
     </template>
   </div>
@@ -90,20 +91,22 @@
 </div>
 <script src="../assets/js/vue.js"></script>
 <script>
-function _nav(p) { if (window.parent !== window) window.parent.postMessage({ navigate: p }, '*'); }
+function _nav(p, params) {
+  if (window.parent !== window) window.parent.postMessage({ navigate: p, params: params || '' }, '*');
+}
 new Vue({
   el: '#app',
   data: {
     isEmpty: location.search.indexOf('empty=1') >= 0,
     pending: [
-      { id:1, icon:'📚', name:'每日阅读30分钟', time:'全天', group:'自律打卡群', n:28 },
-      { id:2, icon:'🏃', name:'晨跑5公里', time:'06:00-09:00', group:'健身打卡营', n:15 },
-      { id:3, icon:'💪', name:'健身打卡', time:'全天', group:'运动挑战营', n:42 },
-      { id:6, icon:'🧘', name:'21天正念冥想营', time:'全天', group:'正念打卡群', n:20, closed:true },
+      { id:1, icon:'📚', name:'每日阅读30分钟', time:'全天', n:28 },
+      { id:2, icon:'🏃', name:'晨跑5公里', time:'06:00-09:00', n:15 },
+      { id:3, icon:'💪', name:'健身打卡', time:'全天', n:42 },
+      { id:6, icon:'🧘', name:'21天正念冥想营', time:'全天', n:20, closed:true },
     ],
     done: [
-      { id:4, icon:'💧', name:'每日喝水2000ml', time:'全天', group:'健康生活群', ct:'09:32' },
-      { id:5, icon:'🧘', name:'冥想10分钟', time:'晚间', group:'正念打卡', ct:'08:15' },
+      { id:4, icon:'💧', name:'每日喝水2000ml', time:'全天', ct:'09:32' },
+      { id:5, icon:'🧘', name:'冥想10分钟', time:'晚间', ct:'08:15' },
     ]
   },
   computed: {
@@ -114,6 +117,9 @@ new Vue({
     open(t) {
       if (t.closed) { _nav('checkin-closed'); return; }
       _nav('checkin-open');
+    },
+    goDetail(t) {
+      _nav('checkin-detail', 'role=participant');
     },
   }
 });

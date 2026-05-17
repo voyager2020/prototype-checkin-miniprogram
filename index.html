@@ -331,6 +331,7 @@ const NOTES = {
   home: {
     interactions: [
       '点击「打卡」→ 开放模式跳转「开放模式 · 确认打卡」独立页；封闭模式跳转「封闭模式 · 确认打卡」独立页',
+      '「已完成」列表每项右侧「详情」→ 跳转打卡项详情（附带 `role=participant`，与「我参与的」一致）',
       '封闭模式打卡项在标题旁显示「🔒封闭」标签，以示区分',
       '开放 / 封闭确认页的姓名默认策略见对应页面说明（第二次进入带出上一次姓名）',
       '底部 Tab「打卡项」→ 切换到打卡项列表',
@@ -339,6 +340,7 @@ const NOTES = {
     nav: [
       { key:'checkin-open',   label:'开放模式 · 确认打卡', dir:'forward' },
       { key:'checkin-closed', label:'封闭模式 · 确认打卡', dir:'forward' },
+      { key:'checkin-detail', label:'已完成 → 打卡项详情', dir:'forward' },
       { key:'checkin-list', label:'打卡项（Tab 切换）',   dir:'forward' },
       { key:'profile',      label:'我的（Tab 切换）',     dir:'forward' },
     ],
