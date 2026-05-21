@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>启动页</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    }
+    .splash {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #0d7a52 0%, #064a31 55%, #033322 100%);
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .logo {
+      width: 112px;
+      height: 112px;
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    }
+    .logo-char {
+      font-size: 56px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    .slogan {
+      margin-top: 28px;
+      font-size: 15px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.92);
+      letter-spacing: 0.6px;
+      text-align: center;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="splash" id="splash" onclick="enterApp()">
+    <div class="logo">
+      <span class="logo-char">止</span>
+    </div>
+    <p class="slogan">善护念 · 常练习 · 自清净</p>
+  </div>
+  <script>
+    function _nav(p, params) {
+      if (window.parent !== window) window.parent.postMessage({ navigate: p, params: params || '' }, '*');
+    }
+    function enterApp() {
+      _nav('home');
+    }
+    setTimeout(enterApp, 2200);
+  </script>
+</body>
+</html>
