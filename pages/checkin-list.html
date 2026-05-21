@@ -52,6 +52,9 @@
     }
     .today-dot.done { color:var(--td-text-1); border-color:var(--td-text-1); }
     .today-dot.undone { color:var(--td-text-4); }
+
+    .list-progress-wrap { height:5px; background:#E8E8E8; border-radius:100px; overflow:hidden; }
+    .list-progress-fill { height:100%; border-radius:100px; background:#56B396; transition:width .3s; }
   </style>
 </head>
 <body style="display:flex;flex-direction:column;height:100vh;overflow:hidden;background:var(--td-bg-page);">
@@ -110,13 +113,13 @@
                 <span style="font-size:12px;color:var(--td-text-3);">· 第 {{ item.day }} 天</span>
                 <span v-if="item.isOwner" style="font-size:11px;color:var(--td-text-4);">· 我发起</span>
               </div>
-              <!-- 完成进度（进行中/待开始=今日；已结束=最后一天） -->
+              <!-- 个人完成进度 -->
               <div style="margin-top:10px;">
                 <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--td-text-3);margin-bottom:4px;">
-                  <span>{{ progressLabel(item) }}</span>
-                  <span style="font-weight:600;color:var(--td-text-2);">{{ item.doneToday }} / {{ item.total }} 人</span>
+                  <span>已打卡{{ item.checkinCount }}天</span>
+                  <span>完成率：{{ joinedCompletionRate(item) }}%</span>
                 </div>
-                <div class="td-progress-wrap"><div class="td-progress-fill" :style="'width:'+todayRate(item)+'%;'"></div></div>
+                <div class="list-progress-wrap"><div class="list-progress-fill" :style="'width:'+joinedProgressWidth(item)+'%;'"></div></div>
               </div>
               <!-- 成员头像 -->
               <div style="display:flex;align-items:center;gap:5px;margin-top:10px;">
@@ -161,13 +164,12 @@
               <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
                 <span style="font-size:12px;color:var(--td-text-3);">第 {{ item.day }} 天</span>
               </div>
-              <!-- 完成进度 -->
+              <!-- 今日打卡人数 -->
               <div style="margin-top:10px;">
-                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--td-text-3);margin-bottom:4px;">
-                  <span>{{ progressLabel(item) }}</span>
-                  <span style="font-weight:600;color:var(--td-text-2);">{{ item.doneToday }} / {{ item.total }} 人</span>
+                <div style="font-size:11px;color:var(--td-text-3);margin-bottom:4px;">
+                  {{ createdProgressLabel(item) }}：{{ item.doneToday }}/{{ item.total }}人
                 </div>
-                <div class="td-progress-wrap"><div class="td-progress-fill" :style="'width:'+todayRate(item)+'%;'"></div></div>
+                <div class="list-progress-wrap"><div class="list-progress-fill" :style="'width:'+todayRate(item)+'%;'"></div></div>
               </div>
               <!-- 成员头像 -->
               <div style="display:flex;align-items:center;gap:5px;margin-top:10px;">
@@ -230,8 +232,19 @@ new Vue({
     ]
   },
   methods: {
-    progressLabel: function(item) {
-      return item.status === 'ended' ? '最后一天完成' : '今日完成';
+    createdProgressLabel: function(item) {
+      return item.status === 'ended' ? '最后一天打卡人数' : '今日打卡人数';
+    },
+    joinedCompletionRate: function(item) {
+      if (!item.day) return '0.0';
+      var rate = item.checkinCount / item.day * 100;
+      if (rate > 100) rate = 100;
+      return rate.toFixed(1);
+    },
+    joinedProgressWidth: function(item) {
+      if (!item.day) return 0;
+      var rate = item.checkinCount / item.day * 100;
+      return rate > 100 ? 100 : Math.round(rate);
     },
     openDetail: function(item) {
       var role = this.cur === 'joined' ? 'participant' : 'owner';
