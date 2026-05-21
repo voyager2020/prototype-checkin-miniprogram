@@ -78,7 +78,7 @@
         <div style="position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(to top,rgba(0,0,0,0.55) 0%,transparent 100%);"></div>
         <!-- 项目名称（覆盖在封面上） -->
         <div style="position:absolute;bottom:38px;left:16px;right:16px;">
-          <h1 style="font-size:19px;font-weight:700;color:#fff;line-height:1.35;text-shadow:0 1px 6px rgba(0,0,0,0.4);margin:0;">每日阅读30分钟</h1>
+          <h1 style="font-size:19px;font-weight:700;color:#fff;line-height:1.35;text-shadow:0 1px 6px rgba(0,0,0,0.4);margin:0;">{{ projectName }}</h1>
         </div>
         <!-- 止观实验室 Logo + 状态标签 -->
         <div style="position:absolute;bottom:12px;left:16px;right:16px;display:flex;align-items:center;justify-content:space-between;">
@@ -90,6 +90,8 @@
           </div>
           <span v-if="status==='pending'"
             style="background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.9);font-size:10px;font-weight:600;padding:2px 9px;border-radius:100px;border:1px solid rgba(255,255,255,0.3);">⏳ 待开始</span>
+          <span v-else-if="status==='ended'"
+            style="background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.9);font-size:10px;font-weight:600;padding:2px 9px;border-radius:100px;border:1px solid rgba(255,255,255,0.3);">✓ 已结束</span>
           <span v-else
             style="background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.9);font-size:10px;font-weight:600;padding:2px 9px;border-radius:100px;border:1px solid rgba(255,255,255,0.3);">🔥 进行中</span>
         </div>
@@ -127,7 +129,7 @@
         </div>
 
         <!-- 展开内容：待开始 / 手动展开；未加入态默认展开 -->
-        <template v-if="status==='pending' || showDetail || !joined">
+        <template v-if="status==='pending' || status==='ended' || showDetail || !joined">
           <div style="padding:14px 16px 12px;border-bottom:1px solid var(--td-border);">
             <p style="font-size:14px;color:var(--td-text-2);line-height:1.75;margin:0;">
               每天完成30分钟专注阅读，并在打卡时记录心得感想。坚持阅读，持续成长，让读书成为每日最重要的一件事。
@@ -165,17 +167,17 @@
         </template>
       </div>
 
-      <!-- ③ 已开始：统计数字 -->
-      <template v-if="status==='started'">
+      <!-- ③ 已开始 / 已结束：统计数字 -->
+      <template v-if="status==='started' || status==='ended'">
 
         <!-- 数据概览 -->
         <div style="background:var(--td-bg-card);margin-top:8px;padding:14px 16px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <span style="font-size:14px;font-weight:600;color:var(--td-text-1);">今日概览</span>
-            <span style="font-size:12px;color:var(--td-text-3);">第 12 / 31 天</span>
+            <span style="font-size:14px;font-weight:600;color:var(--td-text-1);">{{ overviewTitle }}</span>
+            <span style="font-size:12px;color:var(--td-text-3);">{{ dayLabel }}</span>
           </div>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
-            <div v-for="s in summaryStats" :key="s.l" style="background:var(--td-bg-page);border-radius:var(--td-radius-m);padding:10px 6px;text-align:center;border:1px solid var(--td-border);">
+            <div v-for="s in displayStats" :key="s.l" style="background:var(--td-bg-page);border-radius:var(--td-radius-m);padding:10px 6px;text-align:center;border:1px solid var(--td-border);">
               <div style="font-size:18px;font-weight:800;color:var(--td-text-1);">{{ s.v }}</div>
               <div style="font-size:10px;color:var(--td-text-3);margin-top:3px;">{{ s.l }}</div>
             </div>
@@ -183,12 +185,12 @@
           <!-- 进度条 -->
           <div style="display:flex;align-items:center;gap:8px;">
             <div class="td-progress-wrap" style="flex:1;">
-              <div class="td-progress-fill" style="width:68%;"></div>
+              <div class="td-progress-fill" :style="'width:'+progressPercent+'%;'"></div>
             </div>
-            <span style="font-size:12px;color:var(--td-text-2);white-space:nowrap;">68% 完成</span>
+            <span style="font-size:12px;color:var(--td-text-2);white-space:nowrap;">{{ progressPercent }}% 完成</span>
           </div>
-          <!-- 催一催 -->
-          <div style="margin-top:10px;background:var(--td-bg-page);border-radius:var(--td-radius-m);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;border:1px solid var(--td-border);">
+          <!-- 催一催（仅进行中） -->
+          <div v-if="status==='started'" style="margin-top:10px;background:var(--td-bg-page);border-radius:var(--td-radius-m);padding:8px 12px;display:flex;justify-content:space-between;align-items:center;border:1px solid var(--td-border);">
             <span style="font-size:12px;color:var(--td-text-2);">今日 9 人未打卡：小红、小蓝...</span>
             <button @click="showUrge=true" style="font-size:12px;font-weight:700;color:var(--td-text-1);background:none;border:none;cursor:pointer;white-space:nowrap;padding-left:8px;">催一催 →</button>
           </div>
@@ -222,8 +224,8 @@
           <div class="entry-row" @click="_nav('checkin-feed')">
             <div class="entry-icon">📝</div>
             <div class="entry-info">
-              <div class="entry-title">今日打卡动态</div>
-              <div class="entry-desc">{{ todayFeeds.length }} 人已打卡，点击查看详情</div>
+              <div class="entry-title">{{ status==='ended' ? '最后一天打卡动态' : '今日打卡动态' }}</div>
+              <div class="entry-desc">{{ status==='ended' ? '8 人已打卡，点击查看详情' : todayFeeds.length + ' 人已打卡，点击查看详情' }}</div>
             </div>
             <i class="fas fa-chevron-right" style="color:var(--td-text-4);font-size:12px;"></i>
           </div>
@@ -256,7 +258,7 @@
       </template>
 
       <!-- ③ 未开始：待开始提示 -->
-      <template v-else>
+      <template v-else-if="status==='pending'">
         <div style="background:var(--td-bg-card);margin-top:8px;padding:28px 16px;text-align:center;">
           <div style="font-size:36px;margin-bottom:12px;">⏳</div>
           <div style="font-size:15px;font-weight:600;color:var(--td-text-1);margin-bottom:6px;">打卡项尚未开始</div>
@@ -287,6 +289,10 @@
       <!-- 已加入，进行中，未打卡 -->
       <button v-else-if="status==='started'" class="td-btn td-btn-primary td-btn-block" style="height:48px;font-size:16px;" @click="_nav('home')">
         立即打卡
+      </button>
+      <!-- 已加入，已结束 -->
+      <button v-else-if="status==='ended'" class="td-btn td-btn-block" style="height:48px;font-size:15px;background:var(--td-bg-page);color:var(--td-text-3);border:1px solid var(--td-border);cursor:default;">
+        打卡已结束
       </button>
       <!-- 已加入，待开始 -->
       <button v-else class="td-btn td-btn-block" style="height:48px;font-size:15px;background:var(--td-bg-page);color:var(--td-text-3);border:1px solid var(--td-border);cursor:default;">
@@ -537,7 +543,12 @@ new Vue({
       return m ? m[1] : 'main';
     })(),
     status: (function() {
-      return location.search.indexOf('status=pending') >= 0 ? 'pending' : 'started';
+      if (location.search.indexOf('status=pending') >= 0) return 'pending';
+      if (location.search.indexOf('status=ended') >= 0) return 'ended';
+      return 'started';
+    })(),
+    projectName: (function() {
+      return location.search.indexOf('status=ended') >= 0 ? '正念冥想挑战' : '每日阅读30分钟';
     })(),
     role: (function() {
       return location.search.indexOf('role=participant') >= 0 ? 'participant' : 'owner';
@@ -551,6 +562,7 @@ new Vue({
     sort: 'streak',
     sorts: [{k:'streak',l:'连续'},{k:'total',l:'累计'},{k:'active',l:'活跃'}],
     summaryStats: [{v:'28',l:'成员'},{v:'19',l:'已打卡'},{v:'68%',l:'完成率'},{v:'9',l:'剩余天'}],
+    summaryStatsEnded: [{v:'8',l:'成员'},{v:'8',l:'已打卡'},{v:'100%',l:'完成率'},{v:'0',l:'剩余天'}],
     ranks: [
       {name:'小花',av:'🌸',days:12,me:false},
       {name:'小明',av:'😊',days:12,me:true},
@@ -585,6 +597,18 @@ new Vue({
   computed: {
     isOwner: function() {
       return this.role === 'owner';
+    },
+    overviewTitle: function() {
+      return this.status === 'ended' ? '最后一天概览' : '今日概览';
+    },
+    dayLabel: function() {
+      return this.status === 'ended' ? '第 14 / 14 天' : '第 12 / 31 天';
+    },
+    displayStats: function() {
+      return this.status === 'ended' ? this.summaryStatsEnded : this.summaryStats;
+    },
+    progressPercent: function() {
+      return this.status === 'ended' ? 100 : 68;
     },
     statusDate: function() {
       var d = new Date();

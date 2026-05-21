@@ -298,13 +298,6 @@
       <div class="group-label">打卡规则</div>
       <div class="cell-group" style="margin:0 16px;">
 
-        <!-- 打卡频率 -->
-        <div class="cell" @click="showFreqSheet=true">
-          <div class="cell-label">打卡频率</div>
-          <div class="cell-value">{{ f.frequency }}</div>
-          <i class="fas fa-chevron-right cell-arrow"></i>
-        </div>
-
         <!-- 可打卡时间 -->
         <div class="cell" style="cursor:default;">
           <div class="cell-label">可打卡时间</div>
@@ -323,28 +316,6 @@
           </div>
         </div>
 
-        <!-- 允许补卡 -->
-        <div class="cell" @click="f.makeup=!f.makeup">
-          <div class="cell-label">允许补卡</div>
-          <div class="toggle-wrap" :class="f.makeup?'on':''">
-            <div class="toggle-thumb"></div>
-          </div>
-        </div>
-
-        <!-- 补卡次数（仅允许补卡时显示） -->
-        <template v-if="f.makeup">
-          <div class="cell">
-            <div class="cell-label">补卡次数上限</div>
-            <div class="cell-value">总限 {{ f.makeupMax }} 次</div>
-            <i class="fas fa-chevron-right cell-arrow"></i>
-          </div>
-          <div class="cell">
-            <div class="cell-label">限制补卡时间</div>
-            <div class="cell-value">打卡终止前</div>
-            <i class="fas fa-chevron-right cell-arrow"></i>
-          </div>
-        </template>
-
       </div>
 
       <div style="height:8px;"></div>
@@ -359,26 +330,6 @@
   </div>
 
   <div v-if="toast" class="td-toast">{{ toast }}</div>
-
-  <!-- ── 打卡频率选择弹层 ── -->
-  <div v-if="showFreqSheet" class="td-overlay" @click="showFreqSheet=false"></div>
-  <div v-if="showFreqSheet" class="td-sheet" style="padding:0 0 8px;">
-    <div style="padding:16px 16px 12px;border-bottom:1px solid var(--td-border);display:flex;align-items:center;justify-content:space-between;">
-      <span style="font-size:15px;font-weight:700;color:var(--td-text-1);">选择打卡频率</span>
-      <span style="font-size:13px;color:var(--td-text-3);cursor:pointer;padding:4px 0;" @click="showFreqSheet=false">取消</span>
-    </div>
-    <div v-for="opt in freqOptions" :key="opt.val"
-      @click="f.frequency=opt.val; showFreqSheet=false"
-      style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--td-border);cursor:pointer;"
-      :style="f.frequency===opt.val ? 'background:var(--td-bg-hover);' : ''"
-    >
-      <div>
-        <div style="font-size:15px;color:var(--td-text-1);" :style="f.frequency===opt.val?'font-weight:600;':''">{{ opt.val }}</div>
-        <div v-if="opt.desc" style="font-size:11px;color:var(--td-text-3);margin-top:2px;">{{ opt.desc }}</div>
-      </div>
-      <i v-if="f.frequency===opt.val" class="fas fa-check" style="font-size:15px;color:var(--td-text-1);"></i>
-    </div>
-  </div>
 </div>
 
 <script src="../assets/js/vue.js"></script>
@@ -399,20 +350,12 @@ new Vue({
       toast: '',
       submitted: false,
       editMode: isEdit,
-      showFreqSheet: false,
       aiThemes: [
         { bg: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 55%, #0f3460 100%)' },
         { bg: 'linear-gradient(135deg, #2d1b69 0%, #11998e 100%)' },
         { bg: 'linear-gradient(135deg, #232526 0%, #3a3d40 100%)' },
         { bg: 'linear-gradient(135deg, #1f4037 0%, #2c6e49 100%)' },
         { bg: 'linear-gradient(135deg, #3a1c71 0%, #d76d77 70%, #ffaf7b 100%)' },
-      ],
-      freqOptions: [
-        { val: '每月',     desc: '每自然月打卡一次' },
-        { val: '每周',     desc: '每自然周打卡一次' },
-        { val: '每天',     desc: '每天均需打卡' },
-        { val: '法定工作日', desc: '周一至周五，节假日除外' },
-        { val: '法定节假日', desc: '国家法定节假日当天' },
       ],
       f: {
         coverMode:    isEdit ? 'custom' : 'ai',
@@ -425,12 +368,9 @@ new Vue({
         deadline:     isEdit ? '2026-04-30' : '',
         rosterEnabled: isEdit,
         rosterText:   isEdit ? DEMO_ROSTER : '',
-        frequency:    '每天',
         timeFrom:     '00:00',
         timeTo:       '23:59',
         multiCheckin: false,
-        makeup:       false,
-        makeupMax:    30,
       }
     };
   },
