@@ -55,7 +55,7 @@
             <div style="display:flex;justify-content:space-between;align-items:flex-start;">
               <div>
                 <div style="font-size:13px;font-weight:600;color:var(--td-text-1);">{{ rec.name }}</div>
-                <div style="font-size:11px;color:var(--td-text-3);margin-top:3px;">{{ rec.proj }} · {{ rec.time }}</div>
+                <div style="font-size:11px;color:var(--td-text-3);margin-top:3px;">{{ rec.time }}</div>
               </div>
               <i class="fas fa-check-circle" style="color:var(--td-text-2);font-size:18px;flex-shrink:0;margin-top:2px;"></i>
             </div>
@@ -76,18 +76,18 @@ new Vue({
     isEmpty: location.search.indexOf('empty=1') >= 0,
     groups:[
       {date:'2026-05-14',label:'今天 · 5月14日 周四',count:2,items:[
-        {id:1,icon:'💧',name:'每日喝水打卡',proj:'健康生活群',time:'09:32',thought:''},
-        {id:2,icon:'🧘',name:'冥想10分钟',proj:'正念打卡',time:'08:15',thought:'今天冥想很专注，思绪比平时清晰'},
+        {id:1,icon:'💧',name:'每日喝水打卡',time:'09:32',thought:''},
+        {id:2,icon:'🧘',name:'冥想10分钟',time:'08:15',thought:'今天冥想很专注，思绪比平时清晰'},
       ]},
       {date:'2026-05-13',label:'昨天 · 5月13日 周三',count:3,items:[
-        {id:3,icon:'📚',name:'每日阅读30分钟',proj:'自律打卡群',time:'21:30',thought:'读了《黑天鹅》，关于不确定性的思考很有启发'},
-        {id:4,icon:'💧',name:'每日喝水打卡',proj:'健康生活群',time:'20:00',thought:''},
-        {id:5,icon:'🏃',name:'晨跑5公里',proj:'健身打卡营',time:'06:50',thought:'配速545，比昨天慢了一点'},
+        {id:3,icon:'📚',name:'每日阅读30分钟',time:'21:30',thought:'读了《黑天鹅》，关于不确定性的思考很有启发'},
+        {id:4,icon:'💧',name:'每日喝水打卡',time:'20:00',thought:''},
+        {id:5,icon:'🏃',name:'晨跑5公里',time:'06:50',thought:'配速545，比昨天慢了一点'},
       ]},
       {date:'2026-05-12',label:'5月12日 周二',count:3,items:[
-        {id:6,icon:'📚',name:'每日阅读30分钟',proj:'自律打卡群',time:'22:00',thought:''},
-        {id:7,icon:'🏃',name:'晨跑5公里',proj:'健身打卡营',time:'07:00',thought:'早起跑步，状态很好！'},
-        {id:8,icon:'💪',name:'健身打卡',proj:'运动挑战营',time:'19:30',thought:'今天练了肩部，哑铃侧平举4组'},
+        {id:6,icon:'📚',name:'每日阅读30分钟',time:'22:00',thought:''},
+        {id:7,icon:'🏃',name:'晨跑5公里',time:'07:00',thought:'早起跑步，状态很好！'},
+        {id:8,icon:'💪',name:'健身打卡',time:'19:30',thought:'今天练了肩部，哑铃侧平举4组'},
       ]},
     ]
   }
