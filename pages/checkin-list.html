@@ -220,15 +220,15 @@ new Vue({
     toast: '',
     tabs: [{ k:'joined', l:'我参与的' }, { k:'created', l:'我发起的' }],
     joined: [
-      { id:1, icon:'📚', name:'每日阅读30分钟', status:'active',  day:12, todayDone:false, checkinCount:11, doneToday:19, total:28, ms:['😊','🐯','🦁'] },
-      { id:2, icon:'🏃', name:'晨跑5公里挑战',  status:'active',  day:5,  todayDone:true,  checkinCount:5,  doneToday:11, total:15, ms:['🐼','🦊','🐰'] },
-      { id:4, icon:'💧', name:'每日喝水打卡',  status:'active',  day:8,  todayDone:true,  checkinCount:7,  doneToday:9,  total:12, ms:['🐼','🌸','🦊','🐶'], isOwner:true },
-      { id:5, icon:'🧘', name:'正念冥想挑战', status:'ended',  day:14, todayDone:true,  checkinCount:14, doneToday:8,  total:8,  ms:['😊','🌺','🦁'], isOwner:true },
-      { id:3, icon:'💪', name:'健身打卡',        status:'pending', day:0,  todayDone:false, checkinCount:0,  doneToday:0,  total:42, ms:['🐸','🐱','🐶'] },
+      { id:1, icon:'📚', name:'每日阅读30分钟', status:'active',  day:12, todayDone:false, checkinCount:11, doneToday:19, total:28, ms:['😊','🐯','🦁'], closed:true },
+      { id:2, icon:'🏃', name:'晨跑5公里挑战',  status:'active',  day:5,  todayDone:true,  checkinCount:5,  doneToday:11, total:15, ms:['🐼','🦊','🐰'], closed:false },
+      { id:4, icon:'💧', name:'每日喝水打卡',  status:'active',  day:8,  todayDone:true,  checkinCount:7,  doneToday:9,  total:12, ms:['🐼','🌸','🦊','🐶'], isOwner:true, closed:true },
+      { id:5, icon:'🧘', name:'正念冥想挑战', status:'ended',  day:14, todayDone:true,  checkinCount:14, doneToday:8,  total:8,  ms:['😊','🌺','🦁'], isOwner:true, closed:true },
+      { id:3, icon:'💪', name:'健身打卡',        status:'pending', day:0,  todayDone:false, checkinCount:0,  doneToday:0,  total:42, ms:['🐸','🐱','🐶'], closed:false },
     ],
     created: [
-      { id:4, icon:'💧', name:'每日喝水打卡',  status:'active', day:8,  doneToday:9,  total:12, ms:['🐼','🌸','🦊','🐶'] },
-      { id:5, icon:'🧘', name:'正念冥想挑战', status:'ended',  day:14, doneToday:8,  total:8,  ms:['😊','🌺','🦁','🐰'] },
+      { id:4, icon:'💧', name:'每日喝水打卡',  status:'active', day:8,  doneToday:9,  total:12, ms:['🐼','🌸','🦊','🐶'], closed:true },
+      { id:5, icon:'🧘', name:'正念冥想挑战', status:'ended',  day:14, doneToday:8,  total:8,  ms:['😊','🌺','🦁','🐰'], closed:true },
     ]
   },
   methods: {
@@ -249,6 +249,7 @@ new Vue({
     openDetail: function(item) {
       var role = this.cur === 'joined' ? 'participant' : 'owner';
       var params = 'role=' + role;
+      if (item.closed === false) params += '&mode=open';
       if (item.status === 'ended') params += '&status=ended';
       _nav('checkin-detail', params);
     },

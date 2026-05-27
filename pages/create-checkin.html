@@ -406,7 +406,10 @@ new Vue({
       }
       this.showT(this.editMode ? '✓ 修改已保存' : '✓ 发布成功！');
       var self = this;
-      setTimeout(function() { _nav('checkin-detail'); }, 1200);
+      setTimeout(function() {
+        var params = self.f.mode === 'open' ? 'mode=open' : '';
+        _nav('checkin-detail', params);
+      }, 1200);
     },
     showT: function(m) {
       this.toast = m;

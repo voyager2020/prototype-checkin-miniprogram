@@ -60,6 +60,39 @@
     .stats-row:nth-child(even) { background:#fafafa; }
     .stats-bar-wrap { flex:1; height:6px; background:var(--td-border); border-radius:3px; overflow:hidden; }
     .stats-bar { height:100%; background:var(--td-text-1); border-radius:3px; transition:width .3s; }
+
+    .mode-cover-badge {
+      display:inline-flex; align-items:center; gap:4px;
+      background:rgba(255,255,255,0.18); color:rgba(255,255,255,0.92);
+      font-size:10px; font-weight:600; padding:2px 9px; border-radius:100px;
+      border:1px solid rgba(255,255,255,0.3);
+    }
+    .name-sheet {
+      position:fixed; left:0; right:0; bottom:0; z-index:60;
+      background:var(--td-bg-card);
+      border-radius:var(--td-radius-l) var(--td-radius-l) 0 0;
+      max-height:70vh; display:flex; flex-direction:column;
+    }
+    .name-sheet-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 16px 10px; border-bottom:1px solid var(--td-border); flex-shrink:0;
+    }
+    .name-sheet-title { font-size:15px; font-weight:700; color:var(--td-text-1); }
+    .name-sheet-cancel { font-size:13px; color:var(--td-text-3); cursor:pointer; }
+    .name-sheet-search { padding:10px 16px; flex-shrink:0; border-bottom:1px solid var(--td-border); }
+    .name-sheet-search input {
+      width:100%; height:36px; background:var(--td-bg-page); border:1px solid var(--td-border);
+      border-radius:var(--td-radius-m); padding:0 12px; font-size:14px; outline:none;
+    }
+    .name-list { overflow-y:auto; flex:1; }
+    .name-item {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 16px; border-bottom:1px solid var(--td-border); cursor:pointer;
+    }
+    .name-item:active { background:var(--td-bg-hover); }
+    .name-item.selected { background:var(--td-bg-hover); }
+    .name-item-text { font-size:15px; color:var(--td-text-1); }
+    .name-item.selected .name-item-text { font-weight:600; }
   </style>
 </head>
 <body style="display:flex;flex-direction:column;height:100vh;overflow:hidden;">
@@ -80,8 +113,12 @@
         <div style="position:absolute;bottom:38px;left:16px;right:16px;">
           <h1 style="font-size:19px;font-weight:700;color:#fff;line-height:1.35;text-shadow:0 1px 6px rgba(0,0,0,0.4);margin:0;">{{ projectName }}</h1>
         </div>
-        <!-- 状态标签 -->
-        <div style="position:absolute;bottom:12px;right:16px;">
+        <!-- 参与模式 + 状态标签 -->
+        <div style="position:absolute;bottom:12px;left:16px;right:16px;display:flex;align-items:center;justify-content:space-between;">
+          <span class="mode-cover-badge">
+            <i :class="isClosed ? 'fas fa-lock' : 'fas fa-lock-open'" style="font-size:9px;"></i>
+            {{ isClosed ? '封闭式' : '开放式' }}
+          </span>
           <span v-if="status==='pending'"
             style="background:rgba(255,255,255,0.18);color:rgba(255,255,255,0.9);font-size:10px;font-weight:600;padding:2px 9px;border-radius:100px;border:1px solid rgba(255,255,255,0.3);">⏳ 待开始</span>
           <span v-else-if="status==='ended'"
@@ -148,7 +185,11 @@
               </div>
               <div style="display:flex;gap:10px;font-size:13px;">
                 <span style="color:var(--td-text-3);flex-shrink:0;width:52px;">参与模式</span>
-                <span style="color:var(--td-text-1);">封闭模式 · 28 人</span>
+                <span style="color:var(--td-text-1);">{{ modeRuleText }}</span>
+              </div>
+              <div v-if="isClosed" style="display:flex;gap:10px;font-size:13px;">
+                <span style="color:var(--td-text-3);flex-shrink:0;width:52px;">加入截止</span>
+                <span style="color:var(--td-text-1);">2026-05-20 23:59 前</span>
               </div>
             </div>
             <!-- 已加入且进行中时可收起 -->
@@ -232,11 +273,11 @@
             </div>
             <i class="fas fa-chevron-right" style="color:var(--td-text-4);font-size:12px;"></i>
           </div>
-          <div v-if="isOwner" class="entry-row" @click="view='members'">
+          <div v-if="isOwner && isClosed" class="entry-row" @click="view='members'">
             <div class="entry-icon">👥</div>
             <div class="entry-info">
               <div class="entry-title">人员管理</div>
-              <div class="entry-desc">查看全部成员，发起人可移除成员</div>
+              <div class="entry-desc">管理固定成员名单，发起人可移除成员</div>
             </div>
             <i class="fas fa-chevron-right" style="color:var(--td-text-4);font-size:12px;"></i>
           </div>
@@ -252,7 +293,7 @@
           <div style="font-size:13px;color:var(--td-text-3);line-height:1.6;">预计于 2026-05-20 00:00 开始<br>统计数据将在开始后显示</div>
         </div>
         <!-- 人员管理（仅发起人，未开始时也可用） -->
-        <div v-if="isOwner" style="background:var(--td-bg-card);margin-top:8px;overflow:hidden;">
+        <div v-if="isOwner && isClosed" style="background:var(--td-bg-card);margin-top:8px;overflow:hidden;">
           <div class="entry-row" @click="view='members'">
             <div class="entry-icon">👥</div>
             <div class="entry-info">
@@ -269,12 +310,16 @@
 
     <!-- 底部操作栏 -->
     <div style="background:var(--td-bg-card);padding:10px 16px 14px;border-top:1px solid var(--td-border);flex-shrink:0;">
-      <!-- 未加入 -->
-      <button v-if="!joined" class="td-btn td-btn-primary td-btn-block" style="height:48px;font-size:16px;" @click="joined=true;showT('加入成功！')">
+      <!-- 未加入 · 开放式 -->
+      <button v-if="!joined && isOpen" class="td-btn td-btn-primary td-btn-block" style="height:48px;font-size:16px;" @click="joinOpen">
         加入打卡
       </button>
-      <!-- 已加入，进行中，未打卡 -->
-      <button v-else-if="status==='started'" class="td-btn td-btn-primary td-btn-block" style="height:48px;font-size:16px;" @click="_nav('home')">
+      <!-- 未加入 · 封闭式 -->
+      <button v-else-if="!joined && isClosed" class="td-btn td-btn-primary td-btn-block" style="height:48px;font-size:16px;" @click="showJoinSheet=true">
+        选择姓名并加入
+      </button>
+      <!-- 已加入，进行中 -->
+      <button v-else-if="status==='started'" class="td-btn td-btn-primary td-btn-block" style="height:48px;font-size:16px;" @click="goCheckin">
         立即打卡
       </button>
       <!-- 已加入，已结束 -->
@@ -285,6 +330,37 @@
       <button v-else class="td-btn td-btn-block" style="height:48px;font-size:15px;background:var(--td-bg-page);color:var(--td-text-3);border:1px solid var(--td-border);cursor:default;">
         已加入 · 等待开始
       </button>
+    </div>
+
+    <!-- 封闭式 · 未加入 · 选名加入弹层 -->
+    <div v-if="showJoinSheet" class="td-overlay" @click="showJoinSheet=false"></div>
+    <div v-if="showJoinSheet" class="name-sheet">
+      <div class="name-sheet-header">
+        <span class="name-sheet-title">从成员名单中选择</span>
+        <span class="name-sheet-cancel" @click="showJoinSheet=false">取消</span>
+      </div>
+      <div class="name-sheet-search">
+        <input v-model="joinSearch" placeholder="搜索名字…" />
+      </div>
+      <div class="name-list">
+        <div v-for="n in filteredRoster" :key="n"
+          class="name-item" :class="pendingJoinName===n?'selected':''"
+          @click="pickJoinName(n)">
+          <span class="name-item-text">{{ n }}</span>
+          <i v-if="pendingJoinName===n" class="fas fa-check" style="color:var(--td-text-1);font-size:14px;"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- 封闭式 · 加入身份二次确认 -->
+    <div v-if="showJoinConfirm" class="td-overlay" @click="cancelJoinConfirm"></div>
+    <div v-if="showJoinConfirm" class="td-sheet" style="padding:24px 20px 28px;text-align:center;">
+      <div style="font-size:16px;font-weight:700;color:var(--td-text-1);margin-bottom:10px;">确认身份</div>
+      <p style="font-size:14px;color:var(--td-text-2);line-height:1.65;margin-bottom:22px;">你将以「{{ pendingJoinName }}」身份参与，确认吗？</p>
+      <div style="display:flex;gap:10px;">
+        <button class="td-btn td-btn-outline" style="flex:1;height:44px;" @click="cancelJoinConfirm">取消</button>
+        <button class="td-btn td-btn-primary" style="flex:1;height:44px;" @click="confirmJoinClosed">确认加入</button>
+      </div>
     </div>
 
     <!-- 催打卡弹层 -->
@@ -353,7 +429,7 @@
         <div v-for="m in filteredMembers" :key="m.id"
           class="status-cell" :class="m.done?'done':''">
           <div class="sn">{{ m.id }}</div>
-          <div>{{ m.name }}</div>
+          <div>{{ memberDisplayName(m) }}</div>
         </div>
       </div>
     </div>
@@ -406,7 +482,7 @@
         <div style="flex:3;display:flex;align-items:center;gap:6px;">
           <div style="width:28px;height:28px;border-radius:50%;background:var(--td-bg-page);border:1px solid var(--td-border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">{{ m.av }}</div>
           <div>
-            <div style="font-size:13px;font-weight:500;color:var(--td-text-1);">{{ m.name }}</div>
+            <div style="font-size:13px;font-weight:500;color:var(--td-text-1);">{{ memberDisplayName(m) }}</div>
           </div>
         </div>
         <div style="flex:1;text-align:center;font-size:13px;font-weight:700;color:var(--td-text-1);">{{ m.checkins }}</div>
@@ -445,7 +521,7 @@
     <!-- 汇总行 -->
     <div style="padding:8px 16px;background:var(--td-bg-page);border-bottom:1px solid var(--td-border);display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:12px;color:var(--td-text-3);">共 {{ managedMembers.length }} 名成员 · {{ managedMembers.filter(m=>m.done).length }} 人今日已打卡</span>
-      <span v-if="isOwner" style="font-size:12px;color:var(--td-text-3);">发起人可移除成员</span>
+      <span v-if="isOwner" style="font-size:12px;color:var(--td-text-3);">可解除绑定 / 移除成员</span>
     </div>
 
     <!-- 成员列表 -->
@@ -453,28 +529,55 @@
       <div v-for="m in filteredManagedMembers" :key="m.id">
 
         <!-- 正常态 -->
-        <div v-if="deleteConfirmId !== m.id"
+        <div v-if="deleteConfirmId !== m.id && unbindConfirmId !== m.id"
           style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--td-bg-card);border-bottom:1px solid var(--td-border);">
           <!-- 头像 -->
           <div style="width:38px;height:38px;border-radius:50%;background:var(--td-bg-page);border:1px solid var(--td-border);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">{{ m.av }}</div>
           <!-- 姓名 + 编号 -->
           <div style="flex:1;min-width:0;">
-            <div style="font-size:14px;font-weight:500;color:var(--td-text-1);">{{ m.name }}</div>
-            <div style="font-size:11px;color:var(--td-text-3);margin-top:1px;">编号 {{ m.id }} · {{ m.done ? '今日已打卡 ✓' : '今日未打卡' }}</div>
+            <div style="font-size:14px;font-weight:500;color:var(--td-text-1);">{{ memberDisplayName(m) }}</div>
+            <div style="font-size:11px;color:var(--td-text-3);margin-top:1px;">
+              <span v-if="m.nameBound !== false">编号 {{ m.id }} · </span>
+              <span v-else>微信昵称 · </span>
+              {{ m.done ? '今日已打卡 ✓' : '今日未打卡' }}
+            </div>
           </div>
-          <!-- 删除按钮（仅发起人） -->
-          <button v-if="isOwner" @click="deleteConfirmId=m.id"
-            style="width:32px;height:32px;border:1px solid var(--td-border);border-radius:50%;background:var(--td-bg-page);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">
-            <i class="fas fa-trash-can" style="font-size:12px;color:var(--td-text-3);"></i>
-          </button>
+          <!-- 解除绑定 + 删除（仅发起人） -->
+          <div v-if="isOwner" style="display:flex;gap:6px;flex-shrink:0;">
+            <button v-if="m.nameBound !== false" @click="startUnbind(m.id)"
+              style="width:32px;height:32px;border:1px solid var(--td-border);border-radius:50%;background:var(--td-bg-page);display:flex;align-items:center;justify-content:center;cursor:pointer;"
+              title="解除姓名绑定">
+              <i class="fas fa-link-slash" style="font-size:11px;color:var(--td-text-3);"></i>
+            </button>
+            <button @click="startDelete(m.id)"
+              style="width:32px;height:32px;border:1px solid var(--td-border);border-radius:50%;background:var(--td-bg-page);display:flex;align-items:center;justify-content:center;cursor:pointer;"
+              title="移除成员">
+              <i class="fas fa-trash-can" style="font-size:12px;color:var(--td-text-3);"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 确认解除绑定 -->
+        <div v-else-if="unbindConfirmId === m.id"
+          style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#fafafa;border-bottom:1px solid var(--td-border);border-left:3px solid var(--td-text-2);">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--td-text-1);">确认解除「{{ m.name }}」的姓名绑定？</div>
+            <div style="font-size:11px;color:var(--td-text-3);margin-top:2px;line-height:1.5;">解除绑定之后，将呈现微信昵称</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <button @click="unbindConfirmId=null"
+              style="height:32px;padding:0 12px;border:1px solid var(--td-border);border-radius:var(--td-radius-m);background:var(--td-bg-card);font-size:12px;color:var(--td-text-2);cursor:pointer;">取消</button>
+            <button @click="unbindMember(m.id)"
+              style="height:32px;padding:0 12px;border:none;border-radius:var(--td-radius-m);background:var(--td-text-1);font-size:12px;color:#fff;cursor:pointer;">确认解除</button>
+          </div>
         </div>
 
         <!-- 确认删除态 -->
         <div v-else
           style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#fafafa;border-bottom:1px solid var(--td-border);border-left:3px solid var(--td-text-1);">
           <div style="flex:1;">
-            <div style="font-size:13px;font-weight:600;color:var(--td-text-1);">确认移除「{{ m.name }}」？</div>
-            <div style="font-size:11px;color:var(--td-text-3);margin-top:2px;">移除后该成员将无法继续参与此打卡项</div>
+            <div style="font-size:13px;font-weight:600;color:var(--td-text-1);">确认移除「{{ memberDisplayName(m) }}」？</div>
+            <div style="font-size:11px;color:var(--td-text-3);margin-top:2px;line-height:1.5;">移除后该成员将无法继续参与此打卡项，但打卡记录保留。</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;">
             <button @click="deleteConfirmId=null"
@@ -505,21 +608,25 @@ function _nav(p, params) {
   if (window.parent !== window) window.parent.postMessage({ navigate: p, params: params || '' }, '*');
 }
 
+function member(o) {
+  return Object.assign({ nameBound: true, wxNick: '微信用户' + o.id }, o);
+}
+
 var MEMBERS = [
-  {id:1,name:'鲍容容',av:'🌸',done:true},{id:2,name:'季和',av:'😊',done:true},
-  {id:3,name:'张建华',av:'🦁',done:false},{id:4,name:'李晓平',av:'🐼',done:false},
-  {id:5,name:'吕文眉',av:'🦊',done:false},{id:6,name:'何赵英',av:'🌺',done:true},
-  {id:7,name:'郑向青',av:'🐯',done:true},{id:8,name:'郑碧霄',av:'🐸',done:false},
-  {id:9,name:'徐海飞',av:'🐱',done:false},{id:10,name:'陈乐鸥',av:'🐶',done:false},
-  {id:11,name:'刘香莲',av:'🐂',done:true},{id:12,name:'叶朝勇',av:'🐰',done:false},
-  {id:13,name:'王雪平',av:'🌸',done:true},{id:14,name:'谢杰妹',av:'😊',done:false},
-  {id:15,name:'陈育容',av:'🦁',done:true},{id:16,name:'何文新',av:'🐼',done:true},
-  {id:17,name:'黄晓光',av:'🦊',done:true},{id:18,name:'张纤',av:'🌺',done:false},
-  {id:19,name:'蔡小琴',av:'🐯',done:false},{id:20,name:'刘巧武',av:'🐸',done:true},
-  {id:21,name:'方敏',av:'🐱',done:true},{id:22,name:'魏英',av:'🐶',done:false},
-  {id:23,name:'薛杨',av:'🐂',done:false},{id:24,name:'闫春刚',av:'🐰',done:true},
-  {id:25,name:'孙凤梅',av:'🌸',done:true},{id:26,name:'方燕',av:'😊',done:true},
-  {id:27,name:'高娟英',av:'🦁',done:false},{id:28,name:'陈艳',av:'🐼',done:false},
+  member({id:1,name:'鲍容容',av:'🌸',done:true}),member({id:2,name:'季和',av:'😊',done:true}),
+  member({id:3,name:'张建华',av:'🦁',done:false}),member({id:4,name:'李晓平',av:'🐼',done:false}),
+  member({id:5,name:'吕文眉',av:'🦊',done:false}),member({id:6,name:'何赵英',av:'🌺',done:true}),
+  member({id:7,name:'郑向青',av:'🐯',done:true}),member({id:8,name:'郑碧霄',av:'🐸',done:false}),
+  member({id:9,name:'徐海飞',av:'🐱',done:false}),member({id:10,name:'陈乐鸥',av:'🐶',done:false}),
+  member({id:11,name:'刘香莲',av:'🐂',done:true}),member({id:12,name:'叶朝勇',av:'🐰',done:false}),
+  member({id:13,name:'王雪平',av:'🌸',done:true}),member({id:14,name:'谢杰妹',av:'😊',done:false}),
+  member({id:15,name:'陈育容',av:'🦁',done:true}),member({id:16,name:'何文新',av:'🐼',done:true}),
+  member({id:17,name:'黄晓光',av:'🦊',done:true}),member({id:18,name:'张纤',av:'🌺',done:false}),
+  member({id:19,name:'蔡小琴',av:'🐯',done:false}),member({id:20,name:'刘巧武',av:'🐸',done:true}),
+  member({id:21,name:'方敏',av:'🐱',done:true}),member({id:22,name:'魏英',av:'🐶',done:false}),
+  member({id:23,name:'薛杨',av:'🐂',done:false}),member({id:24,name:'闫春刚',av:'🐰',done:true}),
+  member({id:25,name:'孙凤梅',av:'🌸',done:true}),member({id:26,name:'方燕',av:'😊',done:true}),
+  member({id:27,name:'高娟英',av:'🦁',done:false}),member({id:28,name:'陈艳',av:'🐼',done:false}),
 ];
 
 new Vue({
@@ -535,7 +642,12 @@ new Vue({
       return 'started';
     })(),
     projectName: (function() {
-      return location.search.indexOf('status=ended') >= 0 ? '正念冥想挑战' : '每日阅读30分钟';
+      if (location.search.indexOf('status=ended') >= 0) return '正念冥想挑战';
+      if (location.search.indexOf('mode=open') >= 0) return '晨跑5公里挑战';
+      return '每日阅读30分钟';
+    })(),
+    mode: (function() {
+      return location.search.indexOf('mode=open') >= 0 ? 'open' : 'closed';
     })(),
     role: (function() {
       return location.search.indexOf('role=participant') >= 0 ? 'participant' : 'owner';
@@ -546,9 +658,16 @@ new Vue({
     showDetail: false,
     toast: '',
     showUrge: false,
+    showJoinSheet: false,
+    showJoinConfirm: false,
+    joinSearch: '',
+    pendingJoinName: '',
+    pickedJoinName: '',
+    rosterNames: ['鲍容容','季和','张建华','李晓平','吕文眉','何赵英','郑向青','郑碧霄'],
     sort: 'streak',
     sorts: [{k:'streak',l:'连续'},{k:'total',l:'累计'},{k:'active',l:'活跃'}],
     summaryStats: [{v:'28',l:'成员'},{v:'19',l:'已打卡'},{v:'68%',l:'完成率'},{v:'9',l:'剩余天'}],
+    summaryStatsOpen: [{v:'15',l:'成员'},{v:'11',l:'已打卡'},{v:'73%',l:'完成率'},{v:'26',l:'剩余天'}],
     summaryStatsEnded: [{v:'8',l:'成员'},{v:'8',l:'已打卡'},{v:'100%',l:'完成率'},{v:'0',l:'剩余天'}],
     ranks: [
       {name:'小花',av:'🌸',days:12,me:false},
@@ -577,13 +696,29 @@ new Vue({
     // 人员管理视图
     memberSearch: '',
     deleteConfirmId: null,
+    unbindConfirmId: null,
   },
   mounted: function() {
-    if (this.role === 'participant' && this.view === 'members') this.view = 'main';
+    if (this.view === 'members' && (this.role === 'participant' || this.mode === 'open')) this.view = 'main';
   },
   computed: {
     isOwner: function() {
       return this.role === 'owner';
+    },
+    isClosed: function() {
+      return this.mode === 'closed';
+    },
+    isOpen: function() {
+      return this.mode === 'open';
+    },
+    modeRuleText: function() {
+      if (this.isOpen) return '开放模式 · 任何人可扫码加入';
+      return '封闭模式 · 固定成员 ' + this.members.length + ' 人';
+    },
+    filteredRoster: function() {
+      var q = this.joinSearch.trim();
+      if (!q) return this.rosterNames;
+      return this.rosterNames.filter(function(n){ return n.indexOf(q) >= 0; });
     },
     overviewTitle: function() {
       return this.status === 'ended' ? '最后一天概览' : '今日概览';
@@ -592,7 +727,9 @@ new Vue({
       return this.status === 'ended' ? '第 14 / 14 天' : '第 12 / 31 天';
     },
     displayStats: function() {
-      return this.status === 'ended' ? this.summaryStatsEnded : this.summaryStats;
+      if (this.status === 'ended') return this.summaryStatsEnded;
+      if (this.isOpen) return this.summaryStatsOpen;
+      return this.summaryStats;
     },
     statusDate: function() {
       var d = new Date();
@@ -628,18 +765,40 @@ new Vue({
     },
     filteredManagedMembers: function() {
       var q = this.memberSearch.trim();
+      var self = this;
       if (!q) return this.managedMembers;
-      return this.managedMembers.filter(function(m){ return m.name.includes(q); });
+      return this.managedMembers.filter(function(m){
+        return self.memberDisplayName(m).includes(q) || m.name.includes(q);
+      });
     }
   },
   methods: {
+    memberDisplayName: function(m) {
+      return m.nameBound !== false ? m.name : (m.wxNick || '微信用户');
+    },
     prevDay: function() { this.statusDayOffset--; },
     nextDay: function() { if (this.statusDayOffset < 0) this.statusDayOffset++; },
     removeMember: function(id) {
       var m = this.members.find(function(m){ return m.id === id; });
       this.members = this.members.filter(function(m){ return m.id !== id; });
       this.deleteConfirmId = null;
-      this.showT('已移除成员：' + (m ? m.name : ''));
+      this.showT('已移除成员：' + (m ? this.memberDisplayName(m) : ''));
+    },
+    startDelete: function(id) {
+      this.unbindConfirmId = null;
+      this.deleteConfirmId = id;
+    },
+    startUnbind: function(id) {
+      this.deleteConfirmId = null;
+      this.unbindConfirmId = id;
+    },
+    unbindMember: function(id) {
+      var m = this.members.find(function(m){ return m.id === id; });
+      if (m) {
+        m.nameBound = false;
+        this.showT('已解除绑定，现显示为「' + (m.wxNick || '微信用户') + '」');
+      }
+      this.unbindConfirmId = null;
     },
     copyUrge: function() {
       this.showT('已复制到剪贴板');
@@ -648,6 +807,30 @@ new Vue({
     sendUrgeToWeChatGroup: function() {
       this.showUrge = false;
       _nav('urge-share-card');
+    },
+    joinOpen: function() {
+      this.joined = true;
+      this.showT('加入成功！');
+    },
+    pickJoinName: function(name) {
+      this.pendingJoinName = name;
+      this.showJoinSheet = false;
+      this.showJoinConfirm = true;
+    },
+    cancelJoinConfirm: function() {
+      this.showJoinConfirm = false;
+      this.pendingJoinName = '';
+    },
+    confirmJoinClosed: function() {
+      if (!this.pendingJoinName) return;
+      this.pickedJoinName = this.pendingJoinName;
+      this.showJoinConfirm = false;
+      this.joined = true;
+      this.showT('已以「' + this.pendingJoinName + '」身份加入');
+      this.pendingJoinName = '';
+    },
+    goCheckin: function() {
+      _nav(this.isClosed ? 'checkin-closed' : 'checkin-open');
     },
     showT: function(m) {
       this.toast = m;
