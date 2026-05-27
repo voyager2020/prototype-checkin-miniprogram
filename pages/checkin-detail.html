@@ -93,6 +93,27 @@
     .name-item.selected { background:var(--td-bg-hover); }
     .name-item-text { font-size:15px; color:var(--td-text-1); }
     .name-item.selected .name-item-text { font-weight:600; }
+
+    .rename-panel {
+      padding:0 16px 14px;
+      background:var(--td-bg-card);
+      border-bottom:1px solid var(--td-border);
+    }
+    .rename-name-list {
+      max-height:168px;
+      overflow-y:auto;
+      border:1px solid var(--td-border);
+      border-radius:var(--td-radius-m);
+      background:var(--td-bg-page);
+    }
+    .rename-name-item {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:11px 12px; border-bottom:1px solid var(--td-border);
+      cursor:pointer; font-size:14px; color:var(--td-text-1);
+    }
+    .rename-name-item:last-child { border-bottom:none; }
+    .rename-name-item:active { background:var(--td-bg-hover); }
+    .rename-name-item.current { background:var(--td-bg-hover); font-weight:600; }
   </style>
 </head>
 <body style="display:flex;flex-direction:column;height:100vh;overflow:hidden;">
@@ -429,7 +450,7 @@
         <div v-for="m in filteredMembers" :key="m.id"
           class="status-cell" :class="m.done?'done':''">
           <div class="sn">{{ m.id }}</div>
-          <div>{{ memberDisplayName(m) }}</div>
+          <div>{{ m.name }}</div>
         </div>
       </div>
     </div>
@@ -482,7 +503,7 @@
         <div style="flex:3;display:flex;align-items:center;gap:6px;">
           <div style="width:28px;height:28px;border-radius:50%;background:var(--td-bg-page);border:1px solid var(--td-border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">{{ m.av }}</div>
           <div>
-            <div style="font-size:13px;font-weight:500;color:var(--td-text-1);">{{ memberDisplayName(m) }}</div>
+            <div style="font-size:13px;font-weight:500;color:var(--td-text-1);">{{ m.name }}</div>
           </div>
         </div>
         <div style="flex:1;text-align:center;font-size:13px;font-weight:700;color:var(--td-text-1);">{{ m.checkins }}</div>
@@ -521,62 +542,18 @@
     <!-- 汇总行 -->
     <div style="padding:8px 16px;background:var(--td-bg-page);border-bottom:1px solid var(--td-border);display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:12px;color:var(--td-text-3);">共 {{ managedMembers.length }} 名成员 · {{ managedMembers.filter(m=>m.done).length }} 人今日已打卡</span>
-      <span v-if="isOwner" style="font-size:12px;color:var(--td-text-3);">可解除绑定 / 移除成员</span>
+      <span v-if="isOwner" style="font-size:12px;color:var(--td-text-3);">可更改姓名 / 移除成员</span>
     </div>
 
     <!-- 成员列表 -->
     <div style="flex:1;overflow-y:auto;" class="no-sb">
       <div v-for="m in filteredManagedMembers" :key="m.id">
 
-        <!-- 正常态 -->
-        <div v-if="deleteConfirmId !== m.id && unbindConfirmId !== m.id"
-          style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--td-bg-card);border-bottom:1px solid var(--td-border);">
-          <!-- 头像 -->
-          <div style="width:38px;height:38px;border-radius:50%;background:var(--td-bg-page);border:1px solid var(--td-border);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">{{ m.av }}</div>
-          <!-- 姓名 + 编号 -->
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:14px;font-weight:500;color:var(--td-text-1);">{{ memberDisplayName(m) }}</div>
-            <div style="font-size:11px;color:var(--td-text-3);margin-top:1px;">
-              <span v-if="m.nameBound !== false">编号 {{ m.id }} · </span>
-              <span v-else>微信昵称 · </span>
-              {{ m.done ? '今日已打卡 ✓' : '今日未打卡' }}
-            </div>
-          </div>
-          <!-- 解除绑定 + 删除（仅发起人） -->
-          <div v-if="isOwner" style="display:flex;gap:6px;flex-shrink:0;">
-            <button v-if="m.nameBound !== false" @click="startUnbind(m.id)"
-              style="width:32px;height:32px;border:1px solid var(--td-border);border-radius:50%;background:var(--td-bg-page);display:flex;align-items:center;justify-content:center;cursor:pointer;"
-              title="解除姓名绑定">
-              <i class="fas fa-link-slash" style="font-size:11px;color:var(--td-text-3);"></i>
-            </button>
-            <button @click="startDelete(m.id)"
-              style="width:32px;height:32px;border:1px solid var(--td-border);border-radius:50%;background:var(--td-bg-page);display:flex;align-items:center;justify-content:center;cursor:pointer;"
-              title="移除成员">
-              <i class="fas fa-trash-can" style="font-size:12px;color:var(--td-text-3);"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- 确认解除绑定 -->
-        <div v-else-if="unbindConfirmId === m.id"
-          style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#fafafa;border-bottom:1px solid var(--td-border);border-left:3px solid var(--td-text-2);">
-          <div style="flex:1;">
-            <div style="font-size:13px;font-weight:600;color:var(--td-text-1);">确认解除「{{ m.name }}」的姓名绑定？</div>
-            <div style="font-size:11px;color:var(--td-text-3);margin-top:2px;line-height:1.5;">解除绑定之后，将呈现微信昵称</div>
-          </div>
-          <div style="display:flex;gap:8px;flex-shrink:0;">
-            <button @click="unbindConfirmId=null"
-              style="height:32px;padding:0 12px;border:1px solid var(--td-border);border-radius:var(--td-radius-m);background:var(--td-bg-card);font-size:12px;color:var(--td-text-2);cursor:pointer;">取消</button>
-            <button @click="unbindMember(m.id)"
-              style="height:32px;padding:0 12px;border:none;border-radius:var(--td-radius-m);background:var(--td-text-1);font-size:12px;color:#fff;cursor:pointer;">确认解除</button>
-          </div>
-        </div>
-
         <!-- 确认删除态 -->
-        <div v-else
+        <div v-if="deleteConfirmId === m.id"
           style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#fafafa;border-bottom:1px solid var(--td-border);border-left:3px solid var(--td-text-1);">
           <div style="flex:1;">
-            <div style="font-size:13px;font-weight:600;color:var(--td-text-1);">确认移除「{{ memberDisplayName(m) }}」？</div>
+            <div style="font-size:13px;font-weight:600;color:var(--td-text-1);">确认移除「{{ m.name }}」？</div>
             <div style="font-size:11px;color:var(--td-text-3);margin-top:2px;line-height:1.5;">移除后该成员将无法继续参与此打卡项，但打卡记录保留。</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -586,6 +563,47 @@
               style="height:32px;padding:0 12px;border:none;border-radius:var(--td-radius-m);background:var(--td-text-1);font-size:12px;color:#fff;cursor:pointer;">确认移除</button>
           </div>
         </div>
+
+        <template v-else>
+          <!-- 正常态 -->
+          <div
+            style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--td-bg-card);border-bottom:1px solid var(--td-border);">
+            <div style="width:38px;height:38px;border-radius:50%;background:var(--td-bg-page);border:1px solid var(--td-border);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">{{ m.av }}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:14px;font-weight:500;color:var(--td-text-1);">{{ m.name }}</div>
+              <div style="font-size:11px;color:var(--td-text-3);margin-top:1px;">编号 {{ m.id }} · {{ m.done ? '今日已打卡 ✓' : '今日未打卡' }}</div>
+            </div>
+            <div v-if="isOwner" style="display:flex;gap:6px;flex-shrink:0;">
+              <button @click="toggleRename(m.id)"
+                style="height:32px;padding:0 10px;border:1px solid var(--td-border);border-radius:100px;background:var(--td-bg-page);display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-size:12px;color:var(--td-text-2);">
+                <i class="fas fa-pen" style="font-size:10px;"></i> 更改姓名
+              </button>
+              <button @click="startDelete(m.id)"
+                style="width:32px;height:32px;border:1px solid var(--td-border);border-radius:50%;background:var(--td-bg-page);display:flex;align-items:center;justify-content:center;cursor:pointer;"
+                title="移除成员">
+                <i class="fas fa-trash-can" style="font-size:12px;color:var(--td-text-3);"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- 更改姓名 · 展开选名 -->
+          <div v-if="renameMemberId === m.id" class="rename-panel">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span style="font-size:12px;font-weight:600;color:var(--td-text-2);">选择新的绑定姓名</span>
+              <span @click="cancelRename" style="font-size:12px;color:var(--td-text-3);cursor:pointer;">收起</span>
+            </div>
+            <input v-model="renameSearch" class="td-input" style="font-size:13px;margin-bottom:8px;" placeholder="搜索名字…" />
+            <div class="rename-name-list">
+              <div v-if="filteredRenameNames.length === 0" style="padding:20px;text-align:center;font-size:13px;color:var(--td-text-4);">未找到匹配姓名</div>
+              <div v-for="n in filteredRenameNames" :key="n"
+                class="rename-name-item" :class="{ current: m.name === n }"
+                @click="applyRename(m.id, n)">
+                <span>{{ n }}</span>
+                <i v-if="m.name === n" class="fas fa-check" style="font-size:12px;color:var(--td-text-1);"></i>
+              </div>
+            </div>
+          </div>
+        </template>
 
       </div>
 
@@ -609,7 +627,7 @@ function _nav(p, params) {
 }
 
 function member(o) {
-  return Object.assign({ nameBound: true, wxNick: '微信用户' + o.id }, o);
+  return o;
 }
 
 var MEMBERS = [
@@ -663,7 +681,7 @@ new Vue({
     joinSearch: '',
     pendingJoinName: '',
     pickedJoinName: '',
-    rosterNames: ['鲍容容','季和','张建华','李晓平','吕文眉','何赵英','郑向青','郑碧霄'],
+    rosterNames: ['鲍容容','季和','张建华','李晓平','吕文眉','何赵英','郑向青','郑碧霄','王雪平','陈育容','黄晓光','方敏'],
     sort: 'streak',
     sorts: [{k:'streak',l:'连续'},{k:'total',l:'累计'},{k:'active',l:'活跃'}],
     summaryStats: [{v:'28',l:'成员'},{v:'19',l:'已打卡'},{v:'68%',l:'完成率'},{v:'9',l:'剩余天'}],
@@ -696,7 +714,8 @@ new Vue({
     // 人员管理视图
     memberSearch: '',
     deleteConfirmId: null,
-    unbindConfirmId: null,
+    renameMemberId: null,
+    renameSearch: '',
   },
   mounted: function() {
     if (this.view === 'members' && (this.role === 'participant' || this.mode === 'open')) this.view = 'main';
@@ -763,42 +782,53 @@ new Vue({
     managedMembers: function() {
       return this.members;
     },
+    filteredRenameNames: function() {
+      var q = this.renameSearch.trim();
+      if (!q) return this.rosterNames;
+      return this.rosterNames.filter(function(n){ return n.indexOf(q) >= 0; });
+    },
     filteredManagedMembers: function() {
       var q = this.memberSearch.trim();
-      var self = this;
       if (!q) return this.managedMembers;
-      return this.managedMembers.filter(function(m){
-        return self.memberDisplayName(m).includes(q) || m.name.includes(q);
-      });
+      return this.managedMembers.filter(function(m){ return m.name.includes(q); });
     }
   },
   methods: {
-    memberDisplayName: function(m) {
-      return m.nameBound !== false ? m.name : (m.wxNick || '微信用户');
-    },
     prevDay: function() { this.statusDayOffset--; },
     nextDay: function() { if (this.statusDayOffset < 0) this.statusDayOffset++; },
     removeMember: function(id) {
       var m = this.members.find(function(m){ return m.id === id; });
       this.members = this.members.filter(function(m){ return m.id !== id; });
       this.deleteConfirmId = null;
-      this.showT('已移除成员：' + (m ? this.memberDisplayName(m) : ''));
+      this.showT('已移除成员：' + (m ? m.name : ''));
     },
     startDelete: function(id) {
-      this.unbindConfirmId = null;
+      this.renameMemberId = null;
       this.deleteConfirmId = id;
     },
-    startUnbind: function(id) {
+    toggleRename: function(id) {
       this.deleteConfirmId = null;
-      this.unbindConfirmId = id;
-    },
-    unbindMember: function(id) {
-      var m = this.members.find(function(m){ return m.id === id; });
-      if (m) {
-        m.nameBound = false;
-        this.showT('已解除绑定，现显示为「' + (m.wxNick || '微信用户') + '」');
+      if (this.renameMemberId === id) {
+        this.cancelRename();
+        return;
       }
-      this.unbindConfirmId = null;
+      this.renameMemberId = id;
+      this.renameSearch = '';
+    },
+    cancelRename: function() {
+      this.renameMemberId = null;
+      this.renameSearch = '';
+    },
+    applyRename: function(id, newName) {
+      var m = this.members.find(function(m){ return m.id === id; });
+      if (!m || m.name === newName) {
+        this.cancelRename();
+        return;
+      }
+      var oldName = m.name;
+      m.name = newName;
+      this.cancelRename();
+      this.showT('已将绑定姓名由「' + oldName + '」改为「' + newName + '」');
     },
     copyUrge: function() {
       this.showT('已复制到剪贴板');
